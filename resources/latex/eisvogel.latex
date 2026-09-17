@@ -204,12 +204,16 @@ $endif$
 $if(CJKmainfont)$
   \ifXeTeX
     \usepackage{xeCJK}
-    \setCJKmainfont[$for(CJKoptions)$$CJKoptions$$sep$,$endfor$]{$CJKmainfont$}
+    % Most CJK fonts (e.g. SimSun) ship no bold or italic faces, so Chinese
+    % \textbf and \emph would silently fall back to the upright regular face.
+    % AutoFakeBold / AutoFakeSlant make XeTeX synthesize them (a user-supplied
+    % CJKoption can still override these defaults).
+    \setCJKmainfont[AutoFakeBold=4,AutoFakeSlant=.2$for(CJKoptions)$,$CJKoptions$$endfor$]{$CJKmainfont$}
 $if(CJKsansfont)$
-    \setCJKsansfont[$for(CJKoptions)$$CJKoptions$$sep$,$endfor$]{$CJKsansfont$}
+    \setCJKsansfont[AutoFakeBold=4,AutoFakeSlant=.2$for(CJKoptions)$,$CJKoptions$$endfor$]{$CJKsansfont$}
 $endif$
 $if(CJKmonofont)$
-    \setCJKmonofont[$for(CJKoptions)$$CJKoptions$$sep$,$endfor$]{$CJKmonofont$}
+    \setCJKmonofont[AutoFakeBold=4,AutoFakeSlant=.2$for(CJKoptions)$,$CJKoptions$$endfor$]{$CJKmonofont$}
 $endif$
   \fi
 $endif$
