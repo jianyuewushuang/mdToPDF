@@ -1,3 +1,16 @@
+-- Pandoc's LaTeX writer maps markdown headings #..##### to \section..\subparagraph.
+-- A level-6 heading (######) has no LaTeX sectioning command below \subparagraph,
+-- so by default it is emitted as plain body text with no formatting at all.
+-- Render it as a bold, normal-size paragraph instead so it still stands out
+-- from regular body text (matches the gradient scheme in eisvogel.latex:
+-- H1=\Huge, H2=\huge, H3=\LARGE, H4=\Large, H5=\large, H6=\normalsize+bold).
+function Header(h)
+  if h.level == 6 then
+    return pandoc.Para{pandoc.Strong(h.content)}
+  end
+  return nil
+end
+
 -- Inject LaTeX preamble content
 function Meta(meta)
   local latex_preamble = [[

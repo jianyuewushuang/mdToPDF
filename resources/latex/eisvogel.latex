@@ -689,6 +689,20 @@ $endif$
 \addtokomafont{disposition}{\normalfont\color{heading-color}\bfseries}
 
 %
+% Override the default KOMA-Script heading sizes so that every heading
+% level is clearly larger than body text, with a stepped gradient.
+% Pandoc markdown -> LaTeX mapping (top-level-division=section, the default
+% for scrartcl): # -> \section, ## -> \subsection, ### -> \subsubsection,
+% #### -> \paragraph, ##### -> \subparagraph, ###### -> handled by the
+% Lua filter (resources/alerts.lua) as a bold normal-size paragraph.
+%
+\setkomafont{section}{\normalfont\Huge\color{heading-color}\bfseries}
+\setkomafont{subsection}{\normalfont\huge\color{heading-color}\bfseries}
+\setkomafont{subsubsection}{\normalfont\LARGE\color{heading-color}\bfseries}
+\setkomafont{paragraph}{\normalfont\Large\color{heading-color}\bfseries}
+\setkomafont{subparagraph}{\normalfont\large\color{heading-color}\bfseries}
+
+%
 % variables for title, author and date
 %
 \usepackage{titling}

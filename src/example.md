@@ -10,6 +10,7 @@ titlepage-rule-color: "00727c"
 titlepage-background: "C:/Users/jianyuewushuang/document/latex/pandoc-mdToPDF/resources/background.pdf"
 page-background: "C:/Users/jianyuewushuang/document/latex/pandoc-mdToPDF/resources/background.pdf"
 colorlinks: true
+block-headings: true
 toc: true
 toc-own-page: true
 ---
