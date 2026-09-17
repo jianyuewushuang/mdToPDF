@@ -41,8 +41,8 @@ mdToPDF/
 
 | 组件 | 版本 / 说明 |
 | --- | --- |
-| [Pandoc](https://pandoc.org/installing.html) | 测试版本为3.11 |
-| [TeX Live](https://www.tug.org/texlive/) | 含 `lualatex`，测试环境为Texlive |
+| [Pandoc](https://pandoc.org/installing.html) | 安装教程可参考[我写的一篇博文](https://blog.jianyuewushuang.top/2026/05/09/pandoc%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3/) |
+| [TeX Live](https://www.tug.org/texlive/) | 安装教程可参考[我写的另一篇博文](https://blog.jianyuewushuang.top/2026/03/26/LaTex%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3/) |
 | 字体 | `SimSun`、`Source Sans 3`、`Noto Color Emoji`、`FreeSans`、`DejaVu Sans` |
 
 字体说明：`SimSun`用于中文正文；`Source Sans 3` 为西文主字体；

@@ -39,8 +39,8 @@ mdToPDF/
 
 | Component | Version / Notes |
 | --- | --- |
-| [Pandoc](https://pandoc.org/installing.html) | tested with version 3.11 |
-| [TeX Live](https://www.tug.org/texlive/) | includes `lualatex`; tested environment is TeX Live |
+| [Pandoc](https://pandoc.org/installing.html) | refer to [one of my blog post](https://blog.jianyuewushuang.top/2026/05/09/pandoc%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3/) for the installation |
+| [TeX Live](https://www.tug.org/texlive/) | refer to [my another blog post](https://blog.jianyuewushuang.top/2026/03/26/LaTex%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3/) for the installation |
 | Fonts | `SimSun`, `Source Sans 3`, `Noto Color Emoji`, `FreeSans`, `DejaVu Sans` |
 
 Font notes: `SimSun` is used for Chinese body text; `Source Sans 3` is the Latin main font; `Noto Color Emoji / FreeSans / DejaVu Sans` form the emoji and special-symbol fallback chain.
