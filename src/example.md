@@ -55,3 +55,5 @@ print("Hello, World!")
 | 期中检测 + 平时作业 | 30% |
 
 $$P(\text{甲胜}) = \frac12 + \frac14 = \frac34,\quad P(\text{乙胜}) = \frac14$$
+
+(´▽`ʃ♡ƪ)ᓚᘏᗢ😋✊😊❤

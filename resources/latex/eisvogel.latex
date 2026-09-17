@@ -225,7 +225,28 @@ $endif$
 $if(CJKmainfont)$
   \ifLuaTeX
     \usepackage[$for(luatexjafontspecoptions)$$luatexjafontspecoptions$$sep$,$endfor$]{luatexja-fontspec}
-    \setmainjfont[$for(CJKoptions)$$CJKoptions$$sep$,$endfor$]{$CJKmainfont$}
+    % Same fake bold / fake slant defaults as the XeTeX branch (most CJK
+    % fonts such as SimSun ship no bold or italic faces).
+    \setmainjfont[AutoFakeBold=4,AutoFakeSlant=.2$for(CJKoptions)$,$CJKoptions$$endfor$]{$CJKmainfont$}
+$if(CJKsansfont)$
+    \setsansjfont[AutoFakeBold=4,AutoFakeSlant=.2$for(CJKoptions)$,$CJKoptions$$endfor$]{$CJKsansfont$}
+$else$
+    % luatexja otherwise falls back to its built-in Japanese gothic font,
+    % which is often unavailable; mirror xeCJK and reuse the main CJK font.
+    \setsansjfont[AutoFakeBold=4,AutoFakeSlant=.2$for(CJKoptions)$,$CJKoptions$$endfor$]{$CJKmainfont$}
+$endif$
+$if(CJKmonofont)$
+    \setmonojfont[AutoFakeBold=4,AutoFakeSlant=.2$for(CJKoptions)$,$CJKoptions$$endfor$]{$CJKmonofont$}
+$else$
+    \setmonojfont[AutoFakeBold=4,AutoFakeSlant=.2$for(CJKoptions)$,$CJKoptions$$endfor$]{$CJKmainfont$}
+$endif$
+    % luatexja treats the U+2500-U+27BF symbol / dingbat blocks as Japanese
+    % by default, so characters such as U+2661 (WHITE HEART SUIT), U+270A
+    % (RAISED FIST) or U+2764 (HEAVY BLACK HEART) are typeset with the CJK
+    % font even when it lacks the glyphs. Reclassify U+2600-U+27BF as
+    % non-Japanese (range 4) so they go through the Latin font and its
+    % mainfontfallback chain (FreeSans / Noto Color Emoji, ...).
+    \ltjdefcharrange{4}{"2600-"27BF}
   \fi
 $endif$
 \fi

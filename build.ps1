@@ -8,7 +8,11 @@ Get-ChildItem -Path "./src" -Filter "*.md" | ForEach-Object {
         --from markdown+alerts `
         --template "./resources/latex/eisvogel.latex" `
         --syntax-highlighting idiomatic `
-        --pdf-engine "xelatex" `
-        -V CJKmainfont="SimSun"`
+        --pdf-engine "lualatex" `
+        -V CJKmainfont="SimSun" `
+        -V mainfont="Source Sans 3" `
+        -V mainfontfallback="Noto Color Emoji:mode=harf" `
+        -V mainfontfallback="FreeSans:mode=harf" `
+        -V mainfontfallback="DejaVu Sans:mode=harf" `
         --lua-filter "./resources/alerts.lua"
 }
