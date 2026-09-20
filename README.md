@@ -8,6 +8,16 @@ This project is derived from and heavily adapted for Chinese from [Eisvogel](htt
 
 It supports a graded six-level heading scale, Chinese fake-bold / fake-italic, colorful emoji and special symbols, GitHub-style admonitions, code highlighting, tables and math formulas — ideal for turning course notes, lab reports and documents into polished, good-looking PDFs.
 
+## Preview
+
+![preview1](./preview/example_01.avif)
+
+![preview2](./preview/example_02.avif)
+
+![preview3](./preview/example_03.avif)
+
+![preview4](./preview/example_04.avif)
+
 ## Features
 
 - **Graded six-level heading scale**: `#` to `######` step down in size, with a clear hierarchy.
