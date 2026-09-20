@@ -7,8 +7,8 @@ keywords: [关键词, markdown]
 subtitle: "副标题"
 titlepage: true,
 titlepage-rule-color: "00727c"
-titlepage-background: "C:/Users/jianyuewushuang/document/latex/pandoc-mdToPDF/resources/background.pdf"
-page-background: "C:/Users/jianyuewushuang/document/latex/pandoc-mdToPDF/resources/background.pdf"
+titlepage-background: "C:/Users/jianyuewushuang/document/code/programs/mdToPDF/resources/background.pdf"
+page-background: "C:/Users/jianyuewushuang/document/code/programs/mdToPDF/resources/background.pdf"
 colorlinks: true
 block-headings: true
 toc: true
@@ -56,4 +56,4 @@ print("Hello, World!")
 
 $$P(\text{甲胜}) = \frac12 + \frac14 = \frac34,\quad P(\text{乙胜}) = \frac14$$
 
-(´▽`ʃ♡ƪ)ᓚᘏᗢ😋✊😊❤
+(´▽`ʃ♡ƪ)ᓚᘏᗢ😋✊😊❤✓
