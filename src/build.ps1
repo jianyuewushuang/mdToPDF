@@ -1,5 +1,6 @@
 chcp 65001 | Out-Null
 Set-Location $PSScriptRoot
+$env:MERMAID_BIN = (Resolve-Path (Join-Path $PSScriptRoot "..\node_modules\.bin\mmdc.cmd")).Path
 Get-ChildItem -Filter "*.md" | ForEach-Object {
     $inputFile = $_.FullName
     $outputFile = Join-Path "../build" ($_.BaseName + ".pdf")

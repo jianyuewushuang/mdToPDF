@@ -156,9 +156,11 @@ local mermaid = {
         local infile = 'diagram.mmd'
         local outfile = 'diagram.' .. file_extension
         write_file(infile, code)
+        -- note: --pdfFit was removed in mermaid-cli v11+; PDF output now
+        -- fits the diagram by default.
         pipe(
           self.execpath or 'mmdc',
-          {"--pdfFit", "--input", infile, "--output", outfile},
+          {"--input", infile, "--output", outfile},
           ''
         )
         return read_file(outfile), mime_type

@@ -1,0 +1,17 @@
+{
+  "name": "mdtopdf",
+  "version": "1.0.0",
+  "description": "> This project is open-sourced on [github](https://github.com/jianyuewushuang/mdToPDF?tab=readme-ov-file) and [gitlink](https://www.gitlink.org.cn/jianyuewushuang/mdToPDF) (China-network friendly).",
+  "main": "index.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "dependencies": {
+    "@mermaid-js/mermaid-cli": "^12.0.0"
+  }
+}

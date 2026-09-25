@@ -2,3 +2,4 @@ build/
 examples/
 references/
 extras/
+node_modules/
