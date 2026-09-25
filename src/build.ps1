@@ -6,7 +6,7 @@ Get-ChildItem -Filter "*.md" | ForEach-Object {
     pandoc $inputFile `
         -o $outputFile `
         --from markdown+alerts `
-        --template "../resources/latex/eisvogel.latex" `
+        --template "../resources/eisvogel.latex" `
         --syntax-highlighting idiomatic `
         --pdf-engine "lualatex" `
         -V CJKmainfont="SimSun" `
@@ -14,5 +14,6 @@ Get-ChildItem -Filter "*.md" | ForEach-Object {
         -V mainfontfallback="Noto Color Emoji:mode=harf" `
         -V mainfontfallback="FreeSans:mode=harf" `
         -V mainfontfallback="DejaVu Sans:mode=harf" `
-        --lua-filter "../resources/alerts.lua"
+        --lua-filter "../resources/alerts.lua" `
+        --lua-filter "../resources/diagram.lua"
 }
