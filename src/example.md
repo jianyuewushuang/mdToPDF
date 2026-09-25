@@ -57,3 +57,19 @@ print("Hello, World!")
 $$P(\text{甲胜}) = \frac12 + \frac14 = \frac34,\quad P(\text{乙胜}) = \frac14$$
 
 (´▽`ʃ♡ƪ)ᓚᘏᗢ😋✊😊❤✓
+
+```mermaid
+stateDiagram-v2
+    [*] --> NOMINAL
+    NOMINAL --> DEGRADED_A: 单传感器失效
+    DEGRADED_A --> NOMINAL: 传感器恢复
+    NOMINAL --> DEGRADED_B: 单舵面/单发失效
+    DEGRADED_B --> EMERGENCY: 性能不足/包线越界
+    NOMINAL --> EMERGENCY: 链路丢失超时/双IMU失效/火警
+    DEGRADED_A --> EMERGENCY: 冗余耗尽
+    EMERGENCY --> RTL_OR_LOITER: 自主返航或盘旋等待
+    EMERGENCY --> PARACHUTE: 姿态不可控/结构损伤
+    EMERGENCY --> DITCH: 迫降
+```
+
+![图片](resources/background.pdf)

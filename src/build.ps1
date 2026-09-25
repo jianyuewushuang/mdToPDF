@@ -1,12 +1,12 @@
 chcp 65001 | Out-Null
 Set-Location $PSScriptRoot
-Get-ChildItem -Path "./src" -Filter "*.md" | ForEach-Object {
+Get-ChildItem -Filter "*.md" | ForEach-Object {
     $inputFile = $_.FullName
-    $outputFile = Join-Path "./build" ($_.BaseName + ".pdf")
+    $outputFile = Join-Path "../build" ($_.BaseName + ".pdf")
     pandoc $inputFile `
         -o $outputFile `
         --from markdown+alerts `
-        --template "./resources/latex/eisvogel.latex" `
+        --template "../resources/latex/eisvogel.latex" `
         --syntax-highlighting idiomatic `
         --pdf-engine "lualatex" `
         -V CJKmainfont="SimSun" `
@@ -14,5 +14,5 @@ Get-ChildItem -Path "./src" -Filter "*.md" | ForEach-Object {
         -V mainfontfallback="Noto Color Emoji:mode=harf" `
         -V mainfontfallback="FreeSans:mode=harf" `
         -V mainfontfallback="DejaVu Sans:mode=harf" `
-        --lua-filter "./resources/alerts.lua"
+        --lua-filter "../resources/alerts.lua"
 }
