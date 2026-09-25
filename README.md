@@ -24,6 +24,7 @@ It supports a graded six-level heading scale, Chinese fake-bold / fake-italic, c
 - **Chinese bold / italic**: `AutoFakeBold` / `AutoFakeSlant` allow synthesizing bold and italic even for fonts that lack them.
 - **Colorful emoji and special symbols**: uses `lualatex` + `mainfontfallback` to render Unicode characters and colorful emojis.
 - **GitHub-style admonitions**: the `alerts.lua` filter renders five colored callout blocks — `note / tip / important / warning / caution`.
+- **Mermaid diagrams**: the `diagram.lua` filter calls mermaid-cli to render ` ```mermaid ` code blocks into vector images embedded in the PDF.
 - **Code highlighting, tables, math formulas**: native Pandoc support, with the `idiomatic` syntax-highlighting style.
 - **Title page / TOC / colored links**: controlled via YAML Front Matter switches.
 
@@ -40,7 +41,9 @@ mdToPDF/
 │   │   ├── eisvogel.latex  # LaTeX template
 │   │   └── eisvogel.beamer # beamer template
 │   ├── alerts.lua          # GitHub-style admonition Lua filter
+│   ├── diagram.lua         # Lua filter for Mermaid and other diagrams
 │   └── background.pdf      # Title-page / page background image
+├── package.json            # Node dependency manifest (local mermaid-cli)
 ├── build.ps1               # Windows build script
 └── LICENSE.md              # PolyForm Noncommercial License 1.0.0
 ```
@@ -51,6 +54,7 @@ mdToPDF/
 | --- | --- |
 | [Pandoc](https://pandoc.org/installing.html) | refer to [one of my blog post](https://blog.jianyuewushuang.top/2026/05/09/pandoc%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3/) for the installation |
 | [TeX Live](https://www.tug.org/texlive/) | refer to [my another blog post](https://blog.jianyuewushuang.top/2026/03/26/LaTex%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3/) for the installation |
+| [Node.js](https://nodejs.org/) (with npm) | only required for rendering Mermaid diagrams. Run `npm install` in the project root to locally install `@mermaid-js/mermaid-cli` (its Puppeteer dependency automatically downloads Chromium on first run) |
 | Fonts | `SimSun`, `Source Sans 3`, `Noto Color Emoji`, `FreeSans`, `DejaVu Sans` |
 
 Font notes: `SimSun` is used for Chinese body text; `Source Sans 3` is the Latin main font; `Noto Color Emoji / FreeSans / DejaVu Sans` form the emoji and special-symbol fallback chain.
@@ -72,7 +76,7 @@ Build script parameters:
 - Input format: `markdown+alerts`
 - Template: `resources/latex/eisvogel.latex`
 - Engine: `lualatex`
-- Filter: `resources/alerts.lua`
+- Filters: `resources/alerts.lua` (admonitions) and `resources/diagram.lua` (Mermaid diagrams)
 - Syntax highlighting: `idiomatic`
 - Chinese main font: `SimSun`; Latin main font: `Source Sans 3`
 - emoji / symbol fallback chain: `Noto Color Emoji` → `FreeSans` → `DejaVu Sans`
@@ -90,8 +94,13 @@ pandoc .\src\example.md -o .\build\example.pdf `
   -V mainfontfallback="Noto Color Emoji:mode=harf" `
   -V mainfontfallback="FreeSans:mode=harf" `
   -V mainfontfallback="DejaVu Sans:mode=harf" `
-  --lua-filter ".\resources\alerts.lua"
+  --lua-filter ".\resources\alerts.lua" `
+  --lua-filter ".\resources\diagram.lua"
 ```
+
+> [!NOTE]
+> If your document contains Mermaid diagrams, the single-file command needs the filter to find mermaid-cli first:
+> `$env:MERMAID_BIN = ".\node_modules\.bin\mmdc.cmd"` (no manual setup is needed when running `build.ps1`, which already sets it).
 
 ## Writing Markdown
 
@@ -165,10 +174,36 @@ Use the GitHub-style `> [!TYPE]` blockquote syntax; `alerts.lua` renders it as a
 > [!CAUTION]
 > Danger
 
+### Mermaid diagrams
+
+Use a code block with the `mermaid` language tag; the `diagram.lua` filter calls
+[mermaid-cli](https://github.com/mermaid-js/mermaid-cli) to render the diagram as a vector PDF embedded in the document.
+Flowcharts, sequence diagrams, state diagrams, Gantt charts and every other
+[diagram type supported by Mermaid](https://mermaid.js.org/syntax/flowchart.html) work:
+
+````markdown
+```mermaid
+stateDiagram-v2
+    [*] --> NOMINAL
+    NOMINAL --> EMERGENCY: critical fault
+    EMERGENCY --> [*]
+```
+````
+
+**Install the dependency before first use** (Node.js / npm required):
+
+```powershell
+npm install
+```
+
+The dependency is installed locally inside the project (`node_modules/`), nothing is written to the global environment.
+mermaid-cli depends on Puppeteer, which automatically downloads a Chromium build into the user cache directory on its first run.
+
 ## Customization
 
 - **Change the template**: edit `resources/latex/eisvogel.latex` (heading sizes, fonts, colors, headers/footers, etc.).
 - **Change GitHub-style admonition styles**: edit `resources/alerts.lua` (colors, borders, title text).
+- **Change diagram rendering**: edit `resources/diagram.lua`; besides mermaid it also ships with plantuml, graphviz, tikz and d2 engines — install the corresponding executable and use a code block with the matching language tag.
 - **Change the build flow**: edit `build.ps1`.
 - **Reference upstream**: for other questions you can also refer to the upstream project [Eisvogel](https://github.com/Wandmalfarbe/pandoc-latex-template).
 

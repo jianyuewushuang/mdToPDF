@@ -26,6 +26,8 @@
 - **彩色 emoji 与特殊符号**：使用 `lualatex` + `mainfontfallback` ，可渲Unicode字符和彩色表情符号。
 - **github风格提示框**：借助 `alerts.lua` 过滤器渲染
   `note / tip / important / warning / caution` 五种彩色提示块。
+- **Mermaid 图表**：借助 `diagram.lua` 过滤器调用 mermaid-cli，
+  把 ` ```mermaid ` 代码块渲染为矢量图嵌入 PDF。
 - **代码高亮、表格、数学公式**：基于 Pandoc 原生支持，语法高亮风格为 `idiomatic`。
 - **标题页 / 目录 / 链接着色**：通过 YAML 格式Front Matter开关控制。
 
@@ -42,7 +44,9 @@ mdToPDF/
 │   │   ├── eisvogel.latex  # LaTeX 模板
 │   │   └── eisvogel.beamer # beamer 模板
 │   ├── alerts.lua          # gitub风格提示框 Lua 过滤器
+│   ├── diagram.lua         # Mermaid 等图表的 Lua 过滤器
 │   └── background.pdf      # 标题页 / 页面背景图
+├── package.json            # Node 依赖声明（本地 mermaid-cli）
 ├── build.ps1               # Windows 系统构建脚本
 └── LICENSE.md              # PolyForm Noncommercial License 1.0.0
 ```
@@ -53,6 +57,7 @@ mdToPDF/
 | --- | --- |
 | [Pandoc](https://pandoc.org/installing.html) | 安装教程可参考[我写的一篇博文](https://blog.jianyuewushuang.top/2026/05/09/pandoc%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3/) |
 | [TeX Live](https://www.tug.org/texlive/) | 安装教程可参考[我写的另一篇博文](https://blog.jianyuewushuang.top/2026/03/26/LaTex%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3/) |
+| [Node.js](https://nodejs.org/zh-cn)（含 npm） | 仅渲染 Mermaid 图表时需要。在项目根目录执行 `npm install` 即可本地安装 `@mermaid-js/mermaid-cli`（其依赖 Puppeteer 会在首次运行时自动下载 Chromium） |
 | 字体 | `SimSun`、`Source Sans 3`、`Noto Color Emoji`、`FreeSans`、`DejaVu Sans` |
 
 字体说明：`SimSun`用于中文正文；`Source Sans 3` 为西文主字体；
@@ -75,7 +80,7 @@ mdToPDF/
 - 输入格式：`markdown+alerts`
 - 模板：`resources/latex/eisvogel.latex`
 - 引擎：`lualatex`
-- 过滤器：`resources/alerts.lua`
+- 过滤器：`resources/alerts.lua`（提示框）、`resources/diagram.lua`（Mermaid 图表）
 - 语法高亮：`idiomatic`
 - 中文主字体：`SimSun`；西文主字体：`Source Sans 3`
 - emoji / 符号回退链：`Noto Color Emoji` → `FreeSans` → `DejaVu Sans`
@@ -93,8 +98,13 @@ pandoc .\src\example.md -o .\build\example.pdf `
   -V mainfontfallback="Noto Color Emoji:mode=harf" `
   -V mainfontfallback="FreeSans:mode=harf" `
   -V mainfontfallback="DejaVu Sans:mode=harf" `
-  --lua-filter ".\resources\alerts.lua"
+  --lua-filter ".\resources\alerts.lua" `
+  --lua-filter ".\resources\diagram.lua"
 ```
+
+> [!NOTE]
+> 单文件构建时若文档含 Mermaid 图表，需要先让过滤器找到 mermaid-cli：
+> `$env:MERMAID_BIN = ".\node_modules\.bin\mmdc.cmd"`（直接运行 `build.ps1` 无需手动设置，脚本已内置）。
 
 ## 编写 Markdown
 
@@ -168,10 +178,35 @@ toc-own-page: true        # 目录单独成页
 > [!CAUTION]
 > 危险
 
+### Mermaid 图表
+
+在代码块中使用 `mermaid` 语言标记，`diagram.lua` 过滤器会调用
+[mermaid-cli](https://github.com/mermaid-js/mermaid-cli) 把图表渲染为矢量 PDF 并嵌入文档，
+流程图、时序图、状态图、甘特图等 [Mermaid 支持的图形](https://mermaid.js.org/syntax/flowchart.html)均可：
+
+````markdown
+```mermaid
+stateDiagram-v2
+    [*] --> NOMINAL
+    NOMINAL --> EMERGENCY: 严重故障
+    EMERGENCY --> [*]
+```
+````
+
+**首次使用前安装依赖**（需要 Node.js / npm）：
+
+```powershell
+npm install
+```
+
+依赖以项目本地方式安装（位于 `node_modules/`，不会写入全局环境）。
+mermaid-cli 依赖 Puppeteer，首次运行时会自动下载一份 Chromium 到用户缓存目录。
+
 ## 自定义
 
 - **改模板**：编辑 `resources/latex/eisvogel.latex`（标题字号、字体、配色、页眉页脚等）。
 - **改github风格提示框样式**：编辑 `resources/alerts.lua`（颜色、边框、标题文案）。
+- **改图表渲染**：编辑 `resources/diagram.lua`；除 mermaid 外它还内置 plantuml、graphviz、tikz、d2 等引擎，安装对应可执行文件后以同名代码块即可使用。
 - **改构建流程**：编辑 `build.ps1`。
 - **参考上游**：有其他问题也可参考上游项目[Eisvogel](https://github.com/Wandmalfarbe/pandoc-latex-template)。
 
