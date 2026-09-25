@@ -5,7 +5,7 @@ date: "2026-09-12"
 subject: "Markdown"
 keywords: [关键词, markdown]
 subtitle: "副标题"
-titlepage: true,
+titlepage: true
 titlepage-rule-color: "00727c"
 titlepage-background: "C:/Users/jianyuewushuang/document/code/programs/mdToPDF/resources/background.pdf"
 page-background: "C:/Users/jianyuewushuang/document/code/programs/mdToPDF/resources/background.pdf"
