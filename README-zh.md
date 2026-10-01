@@ -35,19 +35,19 @@
 
 ```
 mdToPDF/
-├── src/                    # 存放 Markdown 源文件
-│   └── example.md          # Markdown文件示例
-├── build/                  # 构建产物目录，PDF 由 build.ps1 自动生成
+├── src/                    # 存放 Markdown 源文件与构建脚本
+│   ├── example.md          # Markdown文件示例
+│   ├── build_windows.ps1   # Windows 构建脚本
+│   └── build_linux.sh      # Linux / macOS 构建脚本
+├── build/                  # 构建产物目录，PDF 由构建脚本自动生成
 ├── preview/                # 示例构建产物及其预览图
 ├── resources/              # 模板与资源
-│   ├── latex/
-│   │   ├── eisvogel.latex  # LaTeX 模板
-│   │   └── eisvogel.beamer # beamer 模板
+│   ├── eisvogel.latex      # LaTeX 模板
+│   ├── eisvogel.beamer     # beamer 模板
 │   ├── alerts.lua          # gitub风格提示框 Lua 过滤器
 │   ├── diagram.lua         # Mermaid 等图表的 Lua 过滤器
 │   └── background.pdf      # 标题页 / 页面背景图
 ├── package.json            # Node 依赖声明（本地 mermaid-cli）
-├── build.ps1               # Windows 系统构建脚本
 └── LICENSE.md              # PolyForm Noncommercial License 1.0.0
 ```
 
@@ -63,14 +63,37 @@ mdToPDF/
 字体说明：`SimSun`用于中文正文；`Source Sans 3` 为西文主字体；
 `Noto Color Emoji / FreeSans / DejaVu Sans` 组成 emoji 与特殊符号的回退链。
 
+### Linux / macOS 环境补充
+
+- **字体安装（以 Ubuntu / Debian 为例）**：
+
+  ```bash
+  sudo apt install fonts-noto-cjk fonts-noto-color-emoji \
+                   fonts-freefont-ttf fonts-dejavu-core
+  ```
+
+  `Source Sans 3` 没有官方 apt 包，可从 [Adobe 官方仓库](https://github.com/adobe-fonts/source-sans)下载 TTF 放入 `~/.local/share/fonts/`（无需 root），再执行 `fc-cache -f` 刷新字体缓存。`SimSun`（宋体）是 Windows 专有字体，Linux 上没有授权时建议直接用环境变量替换：
+
+  ```bash
+  CJK_FONT="Noto Serif CJK SC" MAIN_FONT="Noto Sans" bash src/build_linux.sh
+  ```
+
 ## 使用方法
 
 ### 一键构建
 
-把 Markdown 文件放进 `src/`，然后运行构建脚本：
+把 Markdown 文件放进 `src/`，然后运行构建脚本。
+
+**Windows：**
 
 ```powershell
-.\build.ps1
+.\src\build_windows.ps1
+```
+
+**Linux / macOS：**
+
+```bash
+./src/build_linux.sh
 ```
 
 脚本会遍历 `src/` 下所有 `*.md`，逐个生成同名 `build/<name>.pdf`。
@@ -84,6 +107,12 @@ mdToPDF/
 - 语法高亮：`idiomatic`
 - 中文主字体：`SimSun`；西文主字体：`Source Sans 3`
 - emoji / 符号回退链：`Noto Color Emoji` → `FreeSans` → `DejaVu Sans`
+
+`build_linux.sh` 除上述参数外还包含以下 Linux 适配逻辑：
+
+- **字体预检**：构建前用 `fc-list` 检查全部必需字体，缺失时直接报错并给出替代字体建议（可用 `SKIP_FONT_CHECK=1` 跳过检查）。
+- **字体可覆盖**：通过环境变量修改默认字体——`CJK_FONT`（中文主字体，默认 `SimSun`）、`MAIN_FONT`（西文主字体，默认 `Source Sans 3`）、`HIGHLIGHT_STYLE`（高亮样式，默认 `idiomatic`）。
+- **Mermaid 沙箱自适应**：自动探测 Chromium 沙箱是否可用，不可用时在 `build/` 下生成带 `--no-sandbox` 参数的包装脚本，无需手动干预。
 
 ### 单文件构建
 
@@ -104,7 +133,28 @@ pandoc .\src\example.md -o .\build\example.pdf `
 
 > [!NOTE]
 > 单文件构建时若文档含 Mermaid 图表，需要先让过滤器找到 mermaid-cli：
-> `$env:MERMAID_BIN = ".\node_modules\.bin\mmdc.cmd"`（直接运行 `build.ps1` 无需手动设置，脚本已内置）。
+> `$env:MERMAID_BIN = ".\node_modules\.bin\mmdc.cmd"`（直接运行 `build_windows.ps1` 无需手动设置，脚本已内置）。
+
+Linux / macOS 下对应的 bash 命令：
+
+```bash
+export MERMAID_BIN="$(pwd)/node_modules/.bin/mmdc"
+pandoc src/example.md -o build/example.pdf \
+  --from markdown+alerts \
+  --template resources/eisvogel.latex \
+  --syntax-highlighting idiomatic \
+  --pdf-engine lualatex \
+  -V CJKmainfont="SimSun" \
+  -V mainfont="Source Sans 3" \
+  -V mainfontfallback="Noto Color Emoji:mode=harf" \
+  -V mainfontfallback="FreeSans:mode=harf" \
+  -V mainfontfallback="DejaVu Sans:mode=harf" \
+  --lua-filter resources/alerts.lua \
+  --lua-filter resources/diagram.lua
+```
+
+> [!NOTE]
+> Pandoc 低于 3.6 时没有 `--syntax-highlighting` 参数，请把 `--syntax-highlighting idiomatic` 换成 `--highlight-style=tango`（或直接省略使用默认高亮）。直接运行 `build_linux.sh` 无需关心此差异，脚本会自动兼容。
 
 ## 编写 Markdown
 
@@ -207,7 +257,7 @@ mermaid-cli 依赖 Puppeteer，首次运行时会自动下载一份 Chromium 到
 - **改模板**：编辑 `resources/latex/eisvogel.latex`（标题字号、字体、配色、页眉页脚等）。
 - **改github风格提示框样式**：编辑 `resources/alerts.lua`（颜色、边框、标题文案）。
 - **改图表渲染**：编辑 `resources/diagram.lua`；除 mermaid 外它还内置 plantuml、graphviz、tikz、d2 等引擎，安装对应可执行文件后以同名代码块即可使用。
-- **改构建流程**：编辑 `build.ps1`。
+- **改构建流程**：Windows 编辑 `src/build_windows.ps1`，Linux / macOS 编辑 `src/build_linux.sh`。
 - **参考上游**：有其他问题也可参考上游项目[Eisvogel](https://github.com/Wandmalfarbe/pandoc-latex-template)。
 
 ## LICENSE
