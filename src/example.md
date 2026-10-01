@@ -7,8 +7,8 @@ keywords: [关键词, markdown]
 subtitle: "副标题"
 titlepage: true
 titlepage-rule-color: "00727c"
-titlepage-background: "C:/Users/jianyuewushuang/document/code/projects/mdToPDF/resources/background.pdf"
-page-background: "C:/Users/jianyuewushuang/document/code/projects/mdToPDF/resources/background.pdf"
+titlepage-background: "resources/background.pdf"
+page-background: "resources/background.pdf"
 colorlinks: true
 block-headings: true
 toc: true
