@@ -56,7 +56,7 @@ print("Hello, World!")
 
 $$P(\text{甲胜}) = \frac12 + \frac14 = \frac34,\quad P(\text{乙胜}) = \frac14$$
 
-(´▽`ʃ♡ƪ)ᓚᘏᗢ😋✊😊❤✓
+(´▽`ʃ♡ƪ)ᓚᘏᗢ😋✊😊❤✓↔−
 
 ```mermaid
 stateDiagram-v2
