@@ -36,6 +36,10 @@ toc-own-page: true
 - 无序列表
 - 无序列表
 
+latex命令支持
+
+\newpage
+
 1. 有序列表
 2. 有序列表
 
