@@ -1,0 +1,75 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{tikzflora}[2026/10/30 Procedural watercolor botanical margins]
+% tikzflora grows watercolour flora in the page margins, in Lua, drawn
+% through PGF. MIT licence. https://flora.alpacasoft.dev
+%
+% It would not exist without the r/LaTeX thread "How do you make these
+% flowers in LaTeX?" (old.reddit.com/r/LaTeX/comments/1xixznw) and Kevin
+% Raymond's florilegium (github.com/kevinraymond/florilegium), whose grown
+% margins, animation and visitors it follows. Ink colours: Pilot
+% iroshizuku ramps measured by madoromi
+% (madoromi.moonwit.ch/#palettes/colours). Growth after Wong, Zongker and
+% Salesin, "Computer-Generated Floral Ornament", SIGGRAPH 1998.
+
+\RequirePackage{iftex}
+\ifluatex\else
+  \PackageError{tikzflora}{tikzflora needs LuaLaTeX}{Compile with lualatex.}
+\fi
+\RequirePackage{tikz}
+
+% The generator lives in lua/flora/*.lua; the boot file makes it reachable
+% from the repository root without installing anything.
+\directlua{dofile(kpse.find_file("tikzflora-boot.lua", "tex"))}
+
+% Document seed: a number, or "random" to draw new flora on every run.
+\providecommand\florseed{1}
+% A page number to draw flora on that page only (empty: every page). The
+% tuner uses it to recompile one page quickly.
+\providecommand\florapages{}
+
+% Settings for the rest of the document, as key=value pairs:
+%   \florasetup{layout=split, seed=4}
+% Keys are checked when given; see lua/flora/settings.lua and the guide.
+\newcommand\florasetup[1]{\directlua{flora.setup("\luaescapestring{\detokenize{#1}}")}}
+% The same keys for the next page shipped only, usually the current one:
+%   \florathispage{layout=surround}
+\newcommand\florathispage[1]{\directlua{flora.setup("\luaescapestring{\detokenize{#1}}", true)}}
+
+% A title block for layout=title: the flora crowns the lines between the
+% environment's start and end. Without it the title layout frames the
+% first block of lines on the page.
+\newenvironment{floratitle}
+  {\par\directlua{flora.mark("title-start")}}
+  {\par\directlua{flora.mark("title-end")}}
+
+% Draw the specimen sheet inside the current tikzpicture.
+\newcommand\florasheet[1]{\directlua{flora.specimens(#1)}}
+% Draw the ornament gallery inside the current tikzpicture: every ornament
+% kind, labelled with the name ornaments={...} weighs it by, for [3] seeds.
+\newcommand\floragallery[1][3]{\directlua{flora.gallery(#1)}}
+
+% Every shipped page gets a page-sized picture behind its content. Geometry
+% is read at shipout, so per-page layout changes are honoured.
+\newif\iffloraon \floraontrue
+\newcommand\floraoff{\global\floraonfalse}
+\newcommand\floraon{\global\floraontrue}
+
+% The side margin of the page being shipped: two-sided documents set even
+% pages by \evensidemargin.
+\def\flora@sidemargin{%
+  \ifodd\value{page}\oddsidemargin\else\if@twoside\evensidemargin\else\oddsidemargin\fi\fi}
+
+\AddToHook{shipout/background}{%
+  \iffloraon
+    \put(0pt,-\paperheight){\directlua{flora.page{
+      width = "\the\paperwidth", height = "\the\paperheight",
+      text_x0 = "\the\dimexpr 1in+\hoffset+\flora@sidemargin\relax",
+      text_x1 = "\the\dimexpr 1in+\hoffset+\flora@sidemargin+\textwidth\relax",
+      text_y1 = "\the\dimexpr\paperheight-1in-\voffset-\topmargin-\headheight-\headsep\relax",
+      text_y0 = "\the\dimexpr\paperheight-1in-\voffset-\topmargin-\headheight-\headsep-\textheight\relax",
+      header_y = "\the\dimexpr\paperheight-1in-\voffset-\topmargin-\headheight\relax",
+      seed = "\florseed", page = \the\value{page}, box = \number\ShipoutBox,
+      only = "\florapages",
+    }}}%
+  \fi
+}

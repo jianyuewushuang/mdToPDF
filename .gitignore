@@ -4,3 +4,5 @@ references/
 extras/
 node_modules/
 src/media-*/
+.codebuddy/
+src/luatex.*/

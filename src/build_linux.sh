@@ -17,6 +17,8 @@ cd "$SCRIPT_DIR"
 
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 RESOURCES_DIR="$PROJECT_ROOT/resources"
+STYLES_DIR="$RESOURCES_DIR/styles"
+DEFAULT_STYLE="eisvogel"
 BUILD_DIR="$PROJECT_ROOT/build"
 MMDC_BIN="$PROJECT_ROOT/node_modules/.bin/mmdc"
 
@@ -105,6 +107,128 @@ setup_mermaid() {
 
 setup_mermaid
 
+# ---------------------------------------------------------------------------
+# Style registry: one .conf per style, the file name is the `style:` value.
+# Paths in the .conf are relative to the project root and are resolved to
+# absolute paths here, so both build scripts and the documented one-liner
+# behave the same regardless of the working directory.
+# ---------------------------------------------------------------------------
+# kpathsea separates TEXINPUTS with ':' on Unix and ';' on Windows. Detect
+# MSYS / Git Bash / Cygwin so this script also works when run on Windows;
+# a colon there wipes the default search paths and breaks luaotfload.
+case "$(uname -s 2>/dev/null || printf 'unknown')" in
+    MINGW*|MSYS*|CYGWIN*) TEX_SEP=';' ;;
+    *)                    TEX_SEP=':' ;;
+esac
+
+resolve_project_path() {
+    case "$1" in
+        /*) printf '%s\n' "$1" ;;
+        *)  printf '%s\n' "$PROJECT_ROOT/$1" ;;
+    esac
+}
+
+# Environment variables are inherited verbatim by the Windows-native
+# lualatex, so MSYS POSIX paths (/c/...) must be converted. Pandoc arguments
+# are converted automatically by the MSYS runtime and need no special care.
+to_native_path() {
+    local p="$1"
+    if [[ "$TEX_SEP" == ';' && "$p" == /* ]] && command -v cygpath >/dev/null 2>&1; then
+        cygpath -m "$p"
+    else
+        printf '%s\n' "$p"
+    fi
+}
+
+# Emit "KEY=VALUE" for every non-comment line of a .conf file.
+parse_conf() {
+    local conf="$1" line key value
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        line="${line%$'\r'}"
+        line="${line#"${line%%[![:space:]]*}"}"
+        line="${line%"${line##*[![:space:]]}"}"
+        [[ -z "$line" || "$line" == \#* ]] && continue
+        if [[ "$line" != *=* ]]; then
+            echo "警告: 忽略无效的样式配置行: $line ($conf)" >&2
+            continue
+        fi
+        key="${line%%=*}"
+        value="${line#*=}"
+        key="${key%"${key##*[![:space:]]}"}"
+        value="${value#"${value%%[![:space:]]*}"}"
+        printf '%s=%s\n' "$key" "$value"
+    done < "$conf"
+}
+
+# Read only the first Front Matter block. Only an unindented, top-level
+# `style:` key counts; quotes and trailing inline comments are accepted.
+frontmatter_style() {
+    local file="$1" first line value
+    local style="$DEFAULT_STYLE"
+    {
+        if IFS= read -r first; then
+            first="${first#$'\xef\xbb\xbf'}"
+            first="${first%$'\r'}"
+            if [[ "$first" == "---" ]]; then
+                while IFS= read -r line; do
+                    line="${line%$'\r'}"
+                    [[ "$line" == "---" || "$line" == "..." ]] && break
+                    if [[ "$line" =~ ^style[[:space:]]*:[[:space:]]*(.*)$ ]]; then
+                        value="${BASH_REMATCH[1]}"
+                        if [[ "$value" =~ ^[\"\']([^\"\']*)[\"\'] ]]; then
+                            value="${BASH_REMATCH[1]}"
+                        else
+                            value="${value%%#*}"
+                            value="${value%"${value##*[![:space:]]}"}"
+                        fi
+                        [[ -n "$value" ]] && style="$value"
+                    fi
+                done
+            fi
+        fi
+    } < "$file"
+    printf '%s\n' "$style"
+}
+
+shopt -s nullglob
+style_confs=("$STYLES_DIR"/*.conf)
+shopt -u nullglob
+
+if (( ${#style_confs[@]} == 0 )); then
+    echo "错误: 在 $STYLES_DIR 下未找到任何样式配置 (*.conf)" >&2
+    exit 1
+fi
+
+available_styles=()
+all_texinputs=()
+all_env=()
+for conf in "${style_confs[@]}"; do
+    name="$(basename "$conf" .conf)"
+    available_styles+=("$name")
+    while IFS='=' read -r key value; do
+        case "$key" in
+            TEXINPUTS)
+                for dir in $value; do
+                    all_texinputs+=("$(to_native_path "$(resolve_project_path "$dir")")")
+                done
+                ;;
+            ENV_[A-Za-z_]*)
+                all_env+=("${key#ENV_}=$(to_native_path "$(resolve_project_path "$value")")")
+                ;;
+        esac
+    done < <(parse_conf "$conf")
+done
+
+# Set TeX/Lua search paths once, outside the build loop. A trailing empty
+# kpathsea entry keeps the system default search paths appended.
+if (( ${#all_texinputs[@]} > 0 )); then
+    tex_joined="$(IFS="$TEX_SEP"; echo "${all_texinputs[*]}")"
+    export TEXINPUTS="${tex_joined}${TEX_SEP}${TEXINPUTS:-}"
+fi
+for entry in ${all_env[@]+"${all_env[@]}"}; do
+    export "${entry%%=*}=${entry#*=}"
+done
+
 shopt -s nullglob
 md_files=(*.md)
 shopt -u nullglob
@@ -118,23 +242,57 @@ failed=0
 for input_file in "${md_files[@]}"; do
     base="${input_file%.md}"
     output_file="$BUILD_DIR/$base.pdf"
-    echo "==> 构建 $input_file -> ${output_file#"$PROJECT_ROOT"/}"
-    if pandoc "$input_file" \
-        -o "$output_file" \
-        --from markdown+alerts \
-        --template "$RESOURCES_DIR/eisvogel.latex" \
-        ${HIGHLIGHT_ARGS[@]+"${HIGHLIGHT_ARGS[@]}"} \
-        --pdf-engine "lualatex" \
-        -V CJKmainfont="$CJK_FONT" \
-        -V mainfont="$MAIN_FONT" \
-        -V mainfontfallback="Noto Color Emoji:mode=harf" \
-        -V mainfontfallback="FreeSans:mode=harf" \
-        -V mainfontfallback="DejaVu Sans:mode=harf" \
-        --lua-filter "$RESOURCES_DIR/alerts.lua" \
-        --lua-filter "$RESOURCES_DIR/diagram.lua"; then
-        echo "    成功"
+    style="$(frontmatter_style "$input_file")"
+
+    if [[ " ${available_styles[*]} " != *" $style "* ]]; then
+        echo "错误: 未知的样式 '$style'（文件 $input_file）。可用样式: ${available_styles[*]}" >&2
+        failed=1
+        continue
+    fi
+
+    # Per-style pandoc arguments; shared filters/fonts stay identical for all.
+    style_template=""
+    style_filters=()
+    style_extra_args=()
+    while IFS='=' read -r key value; do
+        case "$key" in
+            TEMPLATE)    style_template="$(resolve_project_path "$value")" ;;
+            LUA_FILTERS) for f in $value; do style_filters+=("$(resolve_project_path "$f")"); done ;;
+            PANDOC_ARGS) for a in $value; do style_extra_args+=("$a"); done ;;
+            TEXINPUTS|ENV_*) : ;;  # already applied once, outside the loop
+            *) echo "警告: 忽略未知的样式配置键 '$key'" >&2 ;;
+        esac
+    done < <(parse_conf "$STYLES_DIR/$style.conf")
+
+    if [[ -z "$style_template" || ! -f "$style_template" ]]; then
+        echo "错误: 样式 '$style' 的模板不存在: $style_template" >&2
+        failed=1
+        continue
+    fi
+
+    args=(
+        "$input_file"
+        -o "$output_file"
+        --from markdown+alerts
+        --template "$style_template"
+        ${HIGHLIGHT_ARGS[@]+"${HIGHLIGHT_ARGS[@]}"}
+        --pdf-engine "lualatex"
+        -V CJKmainfont="$CJK_FONT"
+        -V mainfont="$MAIN_FONT"
+        -V mainfontfallback="Noto Color Emoji:mode=harf"
+        -V mainfontfallback="FreeSans:mode=harf"
+        -V mainfontfallback="DejaVu Sans:mode=harf"
+        --lua-filter "$RESOURCES_DIR/alerts.lua"
+        --lua-filter "$RESOURCES_DIR/diagram.lua"
+    )
+    for f in ${style_filters[@]+"${style_filters[@]}"}; do args+=(--lua-filter "$f"); done
+    for a in ${style_extra_args[@]+"${style_extra_args[@]}"}; do args+=("$a"); done
+
+    echo "=> 构建 $input_file -> ${output_file#"$PROJECT_ROOT"/} - 样式 $style"
+    if pandoc "${args[@]}"; then
+        echo "   成功"
     else
-        echo "    失败: $input_file" >&2
+        echo "   失败: $input_file" >&2
         failed=1
     fi
 done

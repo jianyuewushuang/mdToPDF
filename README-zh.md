@@ -30,25 +30,38 @@
   把 ` ```mermaid ` 代码块渲染为矢量图嵌入 PDF。
 - **代码高亮、表格、数学公式**：基于 Pandoc 原生支持，语法高亮风格为 `idiomatic`。
 - **标题页 / 目录 / 链接着色**：通过 YAML 格式Front Matter开关控制。
+- **多样式选择**：Front Matter 一行 `style: eisvogel | tikzflora` 切换版式；默认 `eisvogel`，`tikzflora` 为水彩花草页边装饰样式，且绘制参数全部可配、样式注册表可扩展。
 
 ## 目录结构
 
-```
+```plaintext
 mdToPDF/
-├── src/                    # 存放 Markdown 源文件与构建脚本
-│   ├── example.md          # Markdown文件示例
-│   ├── build_windows.ps1   # Windows 构建脚本
-│   └── build_linux.sh      # Linux / macOS 构建脚本
-├── build/                  # 构建产物目录，PDF 由构建脚本自动生成
-├── preview/                # 示例构建产物及其预览图
-├── resources/              # 模板与资源
-│   ├── eisvogel.latex      # LaTeX 模板
-│   ├── eisvogel.beamer     # beamer 模板
-│   ├── alerts.lua          # gitub风格提示框 Lua 过滤器
-│   ├── diagram.lua         # Mermaid 等图表的 Lua 过滤器
-│   └── background.pdf      # 标题页 / 页面背景图
-├── package.json            # Node 依赖声明（本地 mermaid-cli）
-└── LICENSE.md              # PolyForm Noncommercial License 1.0.0
+├── src/                          # 存放 Markdown 源文件与构建脚本
+│   ├── example.md                # 默认样式示例
+│   ├── example-tikzflora.md      # tikzflora 样式示例
+│   ├── build_windows.ps1         # Windows 构建脚本
+│   └── build_linux.sh            # Linux / macOS 构建脚本
+├── build/                        # 构建产物目录，PDF 由构建脚本自动生成
+├── preview/                      # 示例构建产物及其预览图
+├── resources/                    # 模板与资源
+│   ├── eisvogel.latex            # eisvogel 样式模板（默认）
+│   ├── eisvogel.beamer           # beamer 模板
+│   ├── alerts.lua                # github风格提示框 Lua 过滤器
+│   ├── diagram.lua               # Mermaid 等图表的 Lua 过滤器
+│   ├── flora.lua                 # tikzflora 的 flora-* 参数映射过滤器
+│   ├── background.pdf            # 标题页 / 页面背景图
+│   ├── styles/                   # 样式注册表：每个 .conf 对应一种样式
+│   │   ├── eisvogel.conf
+│   │   ├── tikzflora.conf
+│   │   ├── tikzflora.latex       # tikzflora 独立模板
+│   │   └── README.md             # 样式配置契约与新增样式指南
+│   └── vendor/tikzflora/         # tikzflora 运行时
+│       ├── LICENSE
+│       ├── tikzflora.sty
+│       ├── tikzflora-boot.lua
+│       └── lua/flora/*.lua
+├── package.json                  # Node 依赖声明
+└── LICENSE.md                    # PolyForm Noncommercial License 1.0.0
 ```
 
 ## 环境要求
@@ -57,7 +70,7 @@ mdToPDF/
 | --- | --- |
 | [Pandoc](https://pandoc.org/installing.html) | 安装教程可参考[我写的一篇博文](https://blog.jianyuewushuang.top/2026/05/09/pandoc%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3/) |
 | [TeX Live](https://www.tug.org/texlive/) | 安装教程可参考[我写的另一篇博文](https://blog.jianyuewushuang.top/2026/03/26/LaTex%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3/) |
-| [Node.js](https://nodejs.org/zh-cn)（含 npm） | 仅渲染 Mermaid 图表时需要。在项目根目录执行 `npm install` 即可本地安装 `@mermaid-js/mermaid-cli`（其依赖 Puppeteer 会在首次运行时自动下载 Chromium） |
+| [Node.js](https://nodejs.org/zh-cn) | 仅渲染 Mermaid 图表时需要。在项目根目录执行 `npm install` 即可本地安装 `@mermaid-js/mermaid-cli`（其依赖 Puppeteer 会在首次运行时自动下载 Chromium） |
 | 字体 | `SimSun`、`Source Sans 3`、`Noto Color Emoji`、`FreeSans`、`DejaVu Sans` |
 
 字体说明：`SimSun`用于中文正文；`Source Sans 3` 为西文主字体；
@@ -96,17 +109,18 @@ mdToPDF/
 ./src/build_linux.sh
 ```
 
-脚本会遍历 `src/` 下所有 `*.md`，逐个生成同名 `build/<name>.pdf`。
+脚本会遍历 `src/` 下所有 `*.md`，读取每个文件 Front Matter 中的 `style` 字段选择样式，逐个生成同名 `build/<name>.pdf`。
 
 构建脚本参数：
 
 - 输入格式：`markdown+alerts`
-- 模板：`resources/latex/eisvogel.latex`
+- 模板：由样式注册表 `resources/styles/*.conf` 决定
 - 引擎：`lualatex`
-- 过滤器：`resources/alerts.lua`（提示框）、`resources/diagram.lua`（Mermaid 图表）
+- 过滤器：`resources/alerts.lua`（提示框）、`resources/diagram.lua`（Mermaid 图表），以及样式专属过滤器
 - 语法高亮：`idiomatic`
 - 中文主字体：`SimSun`；西文主字体：`Source Sans 3`
 - emoji / 符号回退链：`Noto Color Emoji` → `FreeSans` → `DejaVu Sans`
+- TeX 搜索路径：tikzflora 运行时目录由 `.conf` 声明并自动加入 `TEXINPUTS`，无需手工安装宏包
 
 `build_linux.sh` 除上述参数外还包含以下 Linux 适配逻辑：
 
@@ -116,10 +130,14 @@ mdToPDF/
 
 ### 单文件构建
 
+日常推荐直接运行构建脚本。下面是手动调用 Pandoc 时两种样式各自的等价命令。
+
+#### eisvogel（默认样式）
+
 ```powershell
 pandoc .\src\example.md -o .\build\example.pdf `
   --from markdown+alerts `
-  --template ".\resources\latex\eisvogel.latex" `
+  --template ".\resources\eisvogel.latex" `
   --syntax-highlighting idiomatic `
   --pdf-engine "lualatex" `
   -V CJKmainfont="SimSun" `
@@ -131,6 +149,29 @@ pandoc .\src\example.md -o .\build\example.pdf `
   --lua-filter ".\resources\diagram.lua"
 ```
 
+#### tikzflora
+
+除换模板外，还需设置 `TEXINPUTS` / `FLORA_LUA` 让临时目录中的 LuaLaTeX 找到 vendored 运行时，并追加 `--lua-filter resources/flora.lua`（负责把 `flora-*` 参数映射为 `\florasetup`）：
+
+```powershell
+$vendor = (Resolve-Path ".\resources\vendor\tikzflora").Path
+$env:TEXINPUTS = "$vendor;"
+$env:FLORA_LUA = "$vendor\lua"
+pandoc .\src\example-tikzflora.md -o .\build\example-tikzflora.pdf `
+  --from markdown+alerts `
+  --template ".\resources\styles\tikzflora.latex" `
+  --syntax-highlighting idiomatic `
+  --pdf-engine "lualatex" `
+  -V CJKmainfont="SimSun" `
+  -V mainfont="Source Sans 3" `
+  -V mainfontfallback="Noto Color Emoji:mode=harf" `
+  -V mainfontfallback="FreeSans:mode=harf" `
+  -V mainfontfallback="DejaVu Sans:mode=harf" `
+  --lua-filter ".\resources\alerts.lua" `
+  --lua-filter ".\resources\diagram.lua" `
+  --lua-filter ".\resources\flora.lua"
+```
+
 > [!NOTE]
 > 单文件构建时若文档含 Mermaid 图表，需要先让过滤器找到 mermaid-cli：
 > `$env:MERMAID_BIN = ".\node_modules\.bin\mmdc.cmd"`（直接运行 `build_windows.ps1` 无需手动设置，脚本已内置）。
@@ -139,6 +180,8 @@ Linux / macOS 下对应的 bash 命令：
 
 ```bash
 export MERMAID_BIN="$(pwd)/node_modules/.bin/mmdc"
+
+# eisvogel（默认样式）
 pandoc src/example.md -o build/example.pdf \
   --from markdown+alerts \
   --template resources/eisvogel.latex \
@@ -151,6 +194,24 @@ pandoc src/example.md -o build/example.pdf \
   -V mainfontfallback="DejaVu Sans:mode=harf" \
   --lua-filter resources/alerts.lua \
   --lua-filter resources/diagram.lua
+
+# tikzflora
+vendor="$(pwd)/resources/vendor/tikzflora"
+export TEXINPUTS="$vendor:"
+export FLORA_LUA="$vendor/lua"
+pandoc src/example-tikzflora.md -o build/example-tikzflora.pdf \
+  --from markdown+alerts \
+  --template resources/styles/tikzflora.latex \
+  --syntax-highlighting idiomatic \
+  --pdf-engine lualatex \
+  -V CJKmainfont="SimSun" \
+  -V mainfont="Source Sans 3" \
+  -V mainfontfallback="Noto Color Emoji:mode=harf" \
+  -V mainfontfallback="FreeSans:mode=harf" \
+  -V mainfontfallback="DejaVu Sans:mode=harf" \
+  --lua-filter resources/alerts.lua \
+  --lua-filter resources/diagram.lua \
+  --lua-filter resources/flora.lua
 ```
 
 > [!NOTE]
@@ -164,6 +225,7 @@ pandoc src/example.md -o build/example.pdf \
 
 ```markdown
 ---
+style: eisvogel            # 样式：eisvogel（默认）或 tikzflora
 title: "标题"
 author: [你的名字]
 date: "2026-09-12"
@@ -183,6 +245,55 @@ toc-own-page: true        # 目录单独成页
 
 > [!NOTE]
 > 在测试时发现背景使用绝对路径无法正常构建，如有其他疑问，欢迎在Issues板块讨论。
+
+#### `style: tikzflora`
+
+该样式使用独立模板 `resources/styles/tikzflora.latex`，完整保留中文适配、提示框、代码块、封面、目录、链接着色等全部特性，并复刻上游示例 `example.tex` 的逐页编排：
+
+| 页面 | 效果 |
+| --- | --- |
+| 封面 | `layout=title`，标题块带冠饰（`floratitle`）、尾饰与角饰，并居中收窄文本区 |
+| 目录 | `layout=surround`，环绕花环 |
+| 正文 | `layout=split`，花草沿奇数页右侧 / 偶数页左侧外边距逐页生长 |
+| 留白 | 由 `tikzflora` 的 shipout 钩子自动测量，花草会长进 `\vspace` 等空白区域 |
+
+默认参数取自示例：`layout=split, seed=3, visitors=0.6`，封面冠饰默认 `ornaments={sun_crest=6, cul_de_lampe=3}`，目录默认 `layout=surround`。所有参数都可在 Front Matter 中逐项覆盖：
+
+```yaml
+---
+style: tikzflora
+title: "花草样式"
+titlepage: true
+toc: true
+toc-own-page: true
+
+flora-layout: split          # left / right / centered / split / title / surround
+flora-seed: 3                # 数值或 random（random 会使多轮编译结果不稳定，不推荐）
+flora-density: 0.8           # 0~10，疏密
+flora-visitors: 0.6          # 0~10，蜜蜂/蝴蝶/鸟/蜗牛权重
+flora-colourway: autumn      # spring / summer / autumn / winter / ember / plum / rose / original
+flora-spin: 2                # 非负整数，重选随机墨色
+flora-gilt: raster           # raster / vector
+flora-giltdpi: 600           # 50~1200
+flora-giltenv: studio        # studio / mirror
+flora-mix: "lily=2, umbel=2, ghost=0"          # 各类花草权重
+flora-palette: "leaves=green, blooms=warm"      # 各部位墨色
+flora-ornaments: "sun_crest=6, cul_de_lampe=3" # 各位置装饰权重
+flora-giltlook: "horizon=0.1, grain=0"          # 光栅金饰外观
+flora-setup: "spin=2"        # 逃生口：原样追加一条 \florasetup，便于使用未来新增的键
+flora-title-layout: title    # 封面页编排（仅该页生效）
+flora-title-ornaments: "sun_crest=6, cul_de_lampe=3"
+flora-toc-layout: surround   # 目录页编排（仅该页生效）
+---
+```
+
+要点：
+
+- 带花括号的键（`flora-mix` / `flora-palette` / `flora-ornaments` / `flora-giltlook`）写成纯字符串 `k=v, k=v`，由 `resources/flora.lua` 包裹成 `key={...}`；值中**不要**自己写花括号、引号、换行或 LaTeX 命令，非法字符会直接报错并指出键名。
+- 参数映射由 `flora.lua` 以原始 LaTeX 注入 preamble，位于模板默认值之后，因此用户值覆盖默认值（tikzflora 的 `\florasetup` 按键合并）。
+- 封面 / 目录的 `flora-title-*` / `flora-toc-*` 通过 `\florathispage` 只对**下一次输出的那一页**生效，优先级高于全局 `flora-*`；目录若跨页，仅首页有花环。
+- `flora-*` 仅对 `tikzflora` 生效，eisvogel 文档中的同名字段会被忽略。
+- 键名与取值范围以上游 [tikz-flora 指南](https://flora.alpacasoft.dev) 为准；项目内附带的运行时位于 `resources/vendor/tikzflora/`。
 
 ### github风格提示框
 
@@ -254,11 +365,21 @@ mermaid-cli 依赖 Puppeteer，首次运行时会自动下载一份 Chromium 到
 
 ## 自定义
 
-- **改模板**：编辑 `resources/latex/eisvogel.latex`（标题字号、字体、配色、页眉页脚等）。
+- **改模板**：eisvogel 编辑 `resources/eisvogel.latex`，tikzflora 编辑 `resources/styles/tikzflora.latex`（标题字号、字体、配色、页眉页脚等）。
+- **改 tikzflora 绘制参数**：优先用 Front Matter 的 `flora-*` 键；要改默认值可编辑 `resources/styles/tikzflora.latex` 中带 `TIKZFLORA ADAPTATIONS` 标记的段落。
 - **改github风格提示框样式**：编辑 `resources/alerts.lua`（颜色、边框、标题文案）。
 - **改图表渲染**：编辑 `resources/diagram.lua`；除 mermaid 外它还内置 plantuml、graphviz、tikz、d2 等引擎，安装对应可执行文件后以同名代码块即可使用。
 - **改构建流程**：Windows 编辑 `src/build_windows.ps1`，Linux / macOS 编辑 `src/build_linux.sh`。
-- **参考上游**：有其他问题也可参考上游项目[Eisvogel](https://github.com/Wandmalfarbe/pandoc-latex-template)。
+- **参考上游**：Eisvogel 见[上游项目](https://github.com/Wandmalfarbe/pandoc-latex-template)；tikzflora 见[官方指南](https://flora.alpacasoft.dev)。
+
+### 新增一个样式
+
+样式由 `resources/styles/*.conf` 注册表驱动，**新增样式不需要修改构建脚本主逻辑**：
+
+1. 在 `resources/styles/` 下新建 `<name>.latex` 模板。
+2. 若需要第三方 TeX 运行时，放进 `resources/vendor/<name>/` 并在 `.conf` 里用 `TEXINPUTS` 声明目录。
+3. 新建 `<name>.conf`，至少写 `TEMPLATE=resources/styles/<name>.latex`；可选 `LUA_FILTERS`（样式专属过滤器）、`ENV_<VAR>`（额外环境变量）、`PANDOC_ARGS`（额外 pandoc 参数）。所有路径都相对项目根，脚本会拼成绝对路径。
+4. 加一个 `src/example-<name>.md` 示例，并在中英文 README 补充该样式的专有参数。
 
 ## LICENSE
 
