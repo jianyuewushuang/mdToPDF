@@ -53,6 +53,39 @@ function M.mark(name)
   require("flora.measure").mark(name)
 end
 
+-- \floraletters: the lettering of box register `reg` (letters.lua),
+-- typeset in its place as a picture of the box's width, its height and
+-- depth grown to hold the shadow and any arch.
+function M.letters(reg, opts)
+  local Letters = require("flora.letters")
+  local o, err = Letters.options(opts)
+  if not o then
+    report("floraletters: " .. err)
+    o = Letters.options("")
+  end
+  local box = tex.box[reg]
+  local pt = require("flora.paint").new({ backend = os.getenv("FLORA_BACKEND") })
+  local ext = box and Letters.paint(pt, box, o)
+  if not ext then
+    texio.write_nl("term and log", "tikzflora: \\floraletters needs an OpenType or TrueType font; the text is set as usual")
+    tex.sprint(string.format("\\box%d", reg))
+    return
+  end
+  local SP = 65536
+  local w = box.width / SP
+  local h, d = math.max(box.height / SP, ext[4]), math.max(box.depth / SP, -ext[2])
+  -- The mark makes the measurer (measure.lua) take the box as ink, so
+  -- the flora keeps clear of the lettering as it does of text.
+  tex.sprint(string.format("\\hbox to %.3fpt{\\directlua{flora.mark('ink')}\\begin{pgfpicture}\\pgfsetbaseline{0pt}"
+    .. "\\pgfpathrectangle{\\pgfqpoint{0pt}{%.3fpt}}{\\pgfqpoint{%.3fpt}{%.3fpt}}\\pgfusepath{use as bounding box}",
+    w, -d, w, h + d))
+  -- FLORA_LETTERS=hide keeps the box and leaves it blank: the site's bake
+  -- (just site-bake) takes the page's text and its lettering apart so the
+  -- mixer can colour the lettering.
+  if os.getenv("FLORA_LETTERS") ~= "hide" then M.typeset(pt) end
+  tex.sprint("\\end{pgfpicture}\\hss}")
+end
+
 function M.specimens(seed)
   local spec = require("flora.specimen")
   tex.sprint(string.format(
@@ -72,7 +105,8 @@ function M.gallery(seeds)
     only[name] = true
   end
   seeds = tonumber(os.getenv("FLORA_GALLERY_SEEDS")) or tonumber(seeds) or 3
-  local pt = require("flora.paint").new({ backend = os.getenv("FLORA_BACKEND"), gilt = M.settings.gilt })
+  local pt = require("flora.paint").new({ backend = os.getenv("FLORA_BACKEND"), gilt = M.settings.gilt,
+    backdrop = require("flora.color").backdrop(M.settings.backdrop) })
   pt.gilt_dpi, pt.gilt_env, pt.gilt_look = M.settings.giltdpi, M.settings.giltenv, M.settings.giltlook
   local cells, w, h
   pt, cells, w, h = require("flora.gallery").sheet(pt, seeds, nil, nil, only)
@@ -126,6 +160,7 @@ function M.page(a)
     seed = M.seed(set.seed or a.seed, a.page),
     lines = lines, layout = set.layout, page = a.page, mix = set.mix, ornaments = set.ornaments, palette = set.palette, spin = set.spin,
     gilt = set.gilt, gilt_dpi = set.giltdpi, gilt_env = set.giltenv, gilt_look = set.giltlook,
+    backdrop = set.backdrop,
     doc_seed = tostring(set.seed or a.seed),
   }
   if marks and marks["title-start"] and lines then
@@ -139,6 +174,19 @@ function M.page(a)
     f:close()
   end
   if skip then return end
+  -- A --draftmode run writes no PDF, and the flora takes no room in the
+  -- layout, so there is nothing to draw.
+  if tex.draftmode and tex.draftmode > 0 then return end
+  if set.cache ~= false and (os.getenv("FLORA_BACKEND") or "pdf") == "pdf" then
+    local file, e, hit = require("flora.cache").page(spec, set, pdf.getcompresslevel and pdf.getcompresslevel() or 6)
+    if file then
+      node.write(img.node(img.scan({ filename = file })))
+      texio.write_nl("log", string.format("flora: page %d %s", a.page, hit and "from the cache" or "grown and cached"))
+      texio.write_nl("log", string.format("flora: %d painted objects", e.count))
+      texio.write_nl("log", string.format("flora: page %d coverage %.2f", a.page, e.coverage))
+      return
+    end
+  end
   local pt = require("flora.compose").page(spec)
   tex.sprint("\\begin{pgfpicture}")
   tex.sprint(string.format(

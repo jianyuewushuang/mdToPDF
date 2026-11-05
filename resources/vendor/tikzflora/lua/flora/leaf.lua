@@ -5,6 +5,7 @@ local G = require("flora.geom")
 local W = require("flora.wash")
 local Brush = require("flora.brush")
 local Tune = require("flora.tune")
+local Mix = require("flora.mix")
 local Paint = require("flora.paint")
 local Color = require("flora.color")
 local pal = Paint.palette
@@ -197,11 +198,12 @@ end
 -- stream `r`. Kinds follow the reference: most large leaves are feathers
 -- (long, arching, lobes swept toward the tip, mostly on the outer curve),
 -- a few are broad acanthus leaves lobed on both sides, and the rest are
--- smooth lance leaves. Small leaves are always lance leaves. Lobed leaves
--- mix deep and light lobing.
+-- smooth lance leaves; the page's mix weighs each shape (mix.lua). Small
+-- leaves are always lance leaves. Lobed leaves mix deep and light lobing.
 function L.options(r, len, ang)
   local up = math.cos(ang) < 0 and -1 or 1
-  local kind = r:weighted({ feather = 6, acanthus = 1.5, lance = 2.5 })
+  local kind = r:weighted({ feather = 6 * Mix.factor("feather"), acanthus = 1.5 * Mix.factor("acanthus"),
+    lance = 2.5 * Mix.factor("lance") }) or "lance"
   if len < 45 then kind = "lance" end
   -- Half the leaves arch over: the blade bends up and the tip droops.
   local droop = r:chance(0.5)

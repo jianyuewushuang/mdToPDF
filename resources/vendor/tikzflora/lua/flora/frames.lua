@@ -11,18 +11,46 @@
 --             arching over it to meet at the top centre
 --   surround  a wreath: one plant up the left margin and along the foot,
 --             another, turned half a circle, down the right and along the top
+--   flank     two plants up the sides of a title page, round its contents,
+--             their roots meeting at the foot round a centre piece
+--   wreath    an open oval garland round the title: two plants laid along
+--             an oval (oval.lua), rooted at its foot, meeting at its top
+--   bouquet   one upright bouquet behind the title, as two plants that hug
+--             its centre line, each title line on a ribbon (orn_ribbon.lua)
+--   scrollwork  a gilt scroll frame on an oval round the title
+--             (orn_scrollwork.lua), with lighter plants twined over it
 --
 -- A map is an affine matrix {a, b, c, d, e, f}: page = (a x + c y + e,
--- b x + d y + f). Every layout here turns by quarter circles or mirrors, so
--- boxes stay axis-aligned in every frame.
+-- b x + d y + f). The affine layouts turn by quarter circles or mirrors, so
+-- boxes stay axis-aligned in every frame. A curved frame (the wreath's)
+-- carries its map as functions instead: `fn` to the page, `inv` back.
 
 local G = require("flora.geom")
 local Tune = require("flora.tune")
 local Title = require("flora.orn_title")
+local Oval = require("flora.oval")
+local Ribbon = require("flora.orn_ribbon")
+local Scrollwork = require("flora.orn_scrollwork")
 
 local M = {}
 
-M.layouts = { left = true, right = true, centered = true, split = true, title = true, surround = true }
+M.order = { "left", "right", "centered", "split", "title", "surround", "flank", "wreath", "bouquet", "scrollwork" }
+M.layouts = {}
+for _, k in ipairs(M.order) do M.layouts[k] = true end
+
+-- What each layout does, for the guide (catalog.lua).
+M.about = {
+  left = "The left margin. The default.",
+  right = "The right margin.",
+  centered = "Both side margins, with a different plant on each side.",
+  split = "The outer margin of a two-sided document: on the right of odd pages and the left of even ones.",
+  title = "A crown over a title. Wrap the title in the floratitle environment; without it the first block of lines on the page is crowned.",
+  surround = "A wreath round the text block, for title pages and contents.",
+  flank = "A title page: a plant up each side of its contents, their roots meeting at the foot round a crest.",
+  wreath = "A title page: an open oval garland round the title, tied at its foot.",
+  bouquet = "A title page: one upright bouquet tied with a bow, behind the title, each title line on a ribbon.",
+  scrollwork = "A title page: an oval gilt scroll frame round the title, with a crest at its head and the flora twined over it.",
+}
 
 -- Apply matrix m to (x, y).
 function M.apply(m, x, y)
@@ -74,7 +102,55 @@ local function frame(spec, m, w, h, opts)
   s.frame_only = opts.frame_only
   s.layout = nil
   if opts.seed then s.seed = opts.seed end
-  return { spec = s, map = m, label = opts.label }
+  return { spec = s, map = m, fn = function(x, y) return M.apply(m, x, y) end, label = opts.label }
+end
+
+-- The frame box round page box `bx` under a curved frame's inverse map,
+-- sampled every 4 pt along the box's edges; nil when it misses the frame.
+local function inv_box(inv, bx, w, h)
+  local x0, y0, x1, y1 = math.huge, math.huge, -math.huge, -math.huge
+  local function add(px, py)
+    local x, y = inv(px, py)
+    x0, y0, x1, y1 = math.min(x0, x), math.min(y0, y), math.max(x1, x), math.max(y1, y)
+  end
+  local nx = math.max(1, math.ceil((bx.x1 - bx.x0) / 4))
+  local ny = math.max(1, math.ceil((bx.y1 - bx.y0) / 4))
+  for i = 0, nx do
+    local x = bx.x0 + (bx.x1 - bx.x0) * i / nx
+    add(x, bx.y0)
+    add(x, bx.y1)
+  end
+  for j = 1, ny - 1 do
+    local y = bx.y0 + (bx.y1 - bx.y0) * j / ny
+    add(bx.x0, y)
+    add(bx.x1, y)
+  end
+  return clip({ x0 = x0, y0 = y0, x1 = x1, y1 = y1 }, w, h)
+end
+
+-- A curved frame of size w x h, mapped to the page by fn and back by inv,
+-- whose text block is `text` (in frame coordinates). The page's measured
+-- lines are carried in through inv. It only frames the text.
+local function curved(spec, fn, inv, w, h, text, opts)
+  local lines
+  if spec.lines then
+    lines = {}
+    for _, l in ipairs(spec.lines) do
+      local c = inv_box(inv, l, w, h)
+      if c then lines[#lines + 1] = c end
+    end
+  end
+  local s = {}
+  for k, v in pairs(spec) do s[k] = v end
+  s.width, s.height, s.text, s.lines = w, h, text, lines
+  s.header_y, s.layout, s.frame_only, s.bare = nil, nil, true, true
+  if opts.seed then s.seed = opts.seed end
+  if opts.density then
+    s.mix = {}
+    for k, v in pairs(spec.mix or {}) do s.mix[k] = v end
+    s.mix.density = (s.mix.density or Tune.mix.density or 1) * opts.density
+  end
+  return { spec = s, fn = fn, inv = inv, label = opts.label }
 end
 
 local IDENTITY = { 1, 0, 0, 1, 0, 0 }
@@ -154,7 +230,145 @@ function M.of(spec)
     end
     fs.title = plan
     return fs
+  elseif layout == "flank" then
+    return M.flank(spec)
+  elseif layout == "wreath" then
+    return M.wreath(spec)
+  elseif layout == "bouquet" then
+    return M.bouquet(spec)
+  elseif layout == "scrollwork" then
+    return M.scrollwork(spec)
   end
+end
+
+-- The measured lines' extent across the page, made symmetric about its
+-- centre: the column a title page's contents fill. Nil with no lines.
+local function column(spec)
+  local W, t = spec.width, spec.text
+  local half
+  for _, l in ipairs(spec.lines or {}) do
+    if l.y1 > t.y0 - 2 and l.y0 < t.y1 + 2 and l.x1 > l.x0 then
+      half = math.max(half or 0, W / 2 - l.x0, l.x1 - W / 2)
+    end
+  end
+  return half
+end
+
+-- Flank: a plant up each side of the contents, in the side margins the
+-- contents' column leaves, rooted along the foot so the two roots meet
+-- under the middle of the page. A crest sits in the column's lowest gap,
+-- or in the foot band under it (orn_title.lua).
+function M.flank(spec)
+  local W, H, t = spec.width, spec.height, spec.text
+  local edge, gutter = spec.edge or 16, spec.gutter or 9
+  -- Each margin is kept between a narrow plant's width and a third of the
+  -- page, whatever the column.
+  local mw_max, mw_min = W * 0.34, 46
+  local half = G.clamp((column(spec) or (t.x1 - t.x0) / 2) + 12,
+    W / 2 - edge - gutter - mw_max, W / 2 - edge - gutter - mw_min)
+  local block = { x0 = W / 2 - half, x1 = W / 2 + half, y0 = t.y0, y1 = t.y1 }
+  local fs = {
+    frame(spec, IDENTITY, W / 2, H, { block = block, label = "left", frame_only = true }),
+    frame(spec, { -1, 0, 0, 1, W, 0 }, W / 2, H, { block = block, seed = seed_of(spec, 2), label = "right", frame_only = true }),
+  }
+  local piece = Title.foot(spec, block)
+  if piece then
+    for _, f in ipairs(fs) do
+      local k = piece.box
+      local c = clip(map_box(M.invert(f.map), { x0 = k[1] - 6, y0 = k[2] - 6, x1 = k[3] + 6, y1 = k[4] + 6 }), W / 2, H)
+      if c then f.spec.closed = { { c.x0, c.y0, c.x1, c.y1 } } end
+    end
+    fs.title = { piece }
+  end
+  return fs
+end
+
+-- The oval a wreath or scroll frame follows round title block B, and its
+-- band: a margin `mw` wide whose curve runs `xc` in from the frame's outer
+-- edge. The oval spans the page's width, is centred on the block and is
+-- at least tall enough that the band's inner side clears the block's
+-- corners. Beyond that it grows, up to 1.3 times as tall as wide, into the
+-- room between the block and the nearest lines above and below it, less
+-- `inset` at each end. A line it cannot clear joins the block, so the
+-- oval frames it too rather than cross it.
+function M.oval(spec, B, inset)
+  local W, H = spec.width, spec.height
+  local edge, gutter = spec.edge or 16, spec.gutter or 9
+  local mw = G.clamp(W * 0.15, 56, 100)
+  local xc = edge + mw * 0.4
+  local d = edge + mw + gutter - xc
+  local a = W / 2 - xc - 4
+  local ring = xc + 4 + (inset or 0)
+  B = { x0 = B.x0, y0 = B.y0, x1 = B.x1, y1 = B.y1 }
+  local b, cy
+  for _ = 1, #(spec.lines or {}) + 1 do
+    local hx = math.max(W / 2 - B.x0, B.x1 - W / 2) + 8
+    local hy = (B.y1 - B.y0) / 2 + 8
+    local u = math.min(0.95, hx / (a - d))
+    cy = (B.y0 + B.y1) / 2
+    local lo, hi = 0, H
+    for _, l in ipairs(spec.lines or {}) do
+      if l.y1 < B.y0 - 0.5 then lo = math.max(lo, l.y1 + 6) end
+      if l.y0 > B.y1 + 0.5 then hi = math.min(hi, l.y0 - 6) end
+    end
+    b = math.max(d + hy / math.sqrt(1 - u * u), math.min(a * 1.3, cy - lo - ring, hi - cy - ring))
+    local grown = false
+    for _, l in ipairs(spec.lines or {}) do
+      local outside = l.y1 < B.y0 - 0.5 or l.y0 > B.y1 + 0.5
+      if outside and l.y1 > cy - b - ring and l.y0 < cy + b + ring then
+        B.x0, B.x1 = math.min(B.x0, l.x0), math.max(B.x1, l.x1)
+        B.y0, B.y1 = math.min(B.y0, l.y0), math.max(B.y1, l.y1)
+        grown = true
+      end
+    end
+    if not grown then break end
+  end
+  return Oval.new(W / 2, cy, a, b), mw, xc
+end
+
+-- Two plants laid along oval `ov` with its band (M.oval), each up one
+-- side from arclength s0 past the foot to s1 short of the top, at
+-- `density` times the margin's.
+local function along(spec, ov, mw, xc, s0, s1, density)
+  local edge, gutter = spec.edge or 16, spec.gutter or 9
+  local xi = edge + mw + gutter
+  local w, h = xi + 40, s1 - s0
+  local text = { x0 = xi, y0 = 0, x1 = w, y1 = h }
+  local fs = {}
+  for i, side in ipairs({ "left", "right" }) do
+    local fn, inv = ov:maps(s0, xc, side == "right")
+    fs[i] = curved(spec, fn, inv, w, h, text, { label = side, seed = i == 2 and seed_of(spec, 2) or nil, density = density })
+  end
+  fs.oval = ov
+  return fs
+end
+
+-- Wreath: two plants laid along an oval round the title, each up one
+-- side from the oval's foot to its top, where their heroes meet. Each
+-- frame starts a little past the foot, so the two roots cross there as a
+-- tied wreath's do; the garland grows at 0.75 of the margin's density.
+function M.wreath(spec)
+  local B = spec.title or M.top_block(spec)
+  local ov, mw, xc = M.oval(spec, B)
+  local edge, gutter = spec.edge or 16, spec.gutter or 9
+  local R = hero_radius(spec, edge + mw + gutter)
+  return along(spec, ov, mw, xc, -(edge + 10), ov.len / 2 - R * 0.35, 0.75)
+end
+
+-- Scrollwork: a gilt scroll frame on an oval round the title
+-- (orn_scrollwork.lua), with lighter plants twined over its band up each
+-- side, between the pieces at its foot and its head.
+function M.scrollwork(spec)
+  local B = spec.title or M.top_block(spec)
+  local ov, mw, xc = M.oval(spec, B, 40)
+  local plan = Scrollwork.plan(spec, ov)
+  local foot, head = plan.foot, plan.head
+  -- The plants start beside the foot piece and stop short of the head's.
+  local fs = along(spec, ov, mw, xc, (foot[3] - foot[1]) * 0.45, ov.len / 2 - (head[3] - head[1]) * 0.7, 0.55)
+  fs.before = function(pt) Scrollwork.under(pt, spec, ov, plan) end
+  fs.after = function(pt) Scrollwork.over(pt, spec, ov, plan) end
+  fs.scrollwork = plan
+  return fs
 end
 
 -- The block of measured lines at the top of the text, down to the first
@@ -193,6 +407,74 @@ function M.between(lines, y_hi, y_lo)
     end
   end
   return B
+end
+
+-- The measured lines whose middles lie inside block B, top first.
+function M.lines_in(spec, B)
+  local out = {}
+  for _, l in ipairs(spec.lines or {}) do
+    local my = (l.y0 + l.y1) / 2
+    if my >= B.y0 - 0.5 and my <= B.y1 + 0.5 and l.x1 > B.x0 and l.x0 < B.x1 then out[#out + 1] = l end
+  end
+  table.sort(out, function(p, q) return p.y1 > q.y1 end)
+  return out
+end
+
+-- Bouquet: one upright bouquet centred on the title, from 230 pt below it
+-- to 170 pt above, short of the nearest lines below and above it (its
+-- stems would cross them). Its two halves are plants whose outer edge is the
+-- bouquet's centre line: their main stems rise from it, gathered, and
+-- leave it over the lowest third, so the bouquet fans out from a tied
+-- foot; the right half stands lower, so the two heroes stagger.
+-- The title's lines are carried into both frames, so blooms and leaves
+-- grow between them while stems pass behind, and each line is painted
+-- on a ribbon over the finished bouquet.
+function M.bouquet(spec)
+  local W, H = spec.width, spec.height
+  local B = spec.title or M.top_block(spec)
+  local gutter = spec.gutter or 9
+  local cx = W / 2
+  local mw = G.clamp((B.x1 - B.x0) * 0.6, 80, W * 0.32)
+  local hw = 4 + mw + gutter
+  local lo, hi = 40, H - 16
+  for _, l in ipairs(spec.lines or {}) do
+    if l.y1 < B.y0 - 0.5 then lo = math.max(lo, l.y1 + 10) end
+    if l.y0 > B.y1 + 0.5 then hi = math.min(hi, l.y0 - 10) end
+  end
+  local base = math.max(lo, B.y0 - 230)
+  local top = math.min(hi, B.y1 + 170)
+  local fs = {}
+  for i, side in ipairs({ "left", "right" }) do
+    local s = side == "left" and -1 or 1
+    local h = (top - base) * (i == 1 and 1 or 0.84)
+    local wf = side == "left" and cx or W - cx
+    local block = side == "left" and { x0 = 0, x1 = cx - hw, y0 = base, y1 = base + h }
+      or { x0 = cx + hw, x1 = W, y0 = base, y1 = base + h }
+    local f = frame(spec, { s, 0, 0, 1, cx, base }, wf, h, { block = block, label = side, frame_only = true,
+      seed = i == 2 and seed_of(spec, 2) or nil })
+    f.spec.bare, f.spec.edge, f.spec.gather = true, 4, h * 0.3
+    -- The bouquet's outline: a quarter of its width at the tie, full from
+    -- just past halfway, rounding over at the top.
+    local closed = {}
+    for y = 0, h, 6 do
+      local u = y / h
+      local k = 0.25 + 0.75 * G.smoothstep(0, 0.55, u) - 0.25 * G.smoothstep(0.82, 1, u)
+      closed[#closed + 1] = { 4 + mw * k + 2, y, wf, y + 6 }
+    end
+    f.spec.closed = closed
+    fs[i] = f
+  end
+  local lines = M.lines_in(spec, B)
+  -- The bow's tails hang about its own size below the knot, and stay
+  -- above the bouquet's foot.
+  local bow = G.clamp(mw * 0.6, 34, 56)
+  local tie = { cx, math.max(base + (top - base) * 0.11, base + bow) }
+  fs.after = function(pt)
+    Ribbon.bow(pt, tie[1], tie[2], bow)
+    Ribbon.paint(pt, lines)
+  end
+  fs.tie = tie
+  return fs
 end
 
 return M

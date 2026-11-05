@@ -6,6 +6,10 @@
 --   bloom, soft, lily, ghost, umbel, cyme, gyps   motifs in the holes
 --                                                 (grow.lua): weight and cap
 --   leaves, leaflets                              spacing along the stems
+--   feather, acanthus, lance                      how often a large leaf
+--                                                 takes each shape (leaf.lua)
+--   fan, round                                    how often a small bloom
+--                                                 takes each style (flower.lua)
 --   sprays, curls                                 the spray cap, curl chance
 --   density                                       the gesture's density field,
 --                                                 spacing and smallest hole
@@ -17,6 +21,8 @@ local M = {}
 
 M.motifs = { "bloom", "soft", "lily", "ghost", "umbel", "cyme", "gyps" }
 M.visitors = { "bee", "butterfly", "bird", "snail" }
+M.shapes = { "feather", "acanthus", "lance" }
+M.styles = { "fan", "round" }
 
 -- The weight of `kind` in `mix` (a table of overrides; nil for defaults).
 function M.weight(mix, kind)
@@ -39,6 +45,26 @@ end
 
 -- Tune.compose (`base`) adjusted by the mix's leaves, leaflets, sprays and
 -- curls weights; `base` itself when they are all 1.
+-- `c` with its caps on how much grows (large leaves, fine sprays, small
+-- blooms, and the soft blooms, lilies and umbels, M.motif_cap) scaled by
+-- `b`, for a plant longer than a page, which would otherwise run out of
+-- growth part way along; `c` itself when b is nil or 1. Spacing is
+-- unchanged, so a longer plant is as full as a page's, not fuller.
+function M.budget(c, b)
+  if b == nil or b == 1 then return c end
+  local out = {}
+  for k, v in pairs(c) do out[k] = v end
+  local function r(n) return math.max(0, math.floor(n * b + 0.5)) end
+  out.leaves, out.sprays, out.small_blooms, out.budget = r(c.leaves), r(c.sprays), r(c.small_blooms), b
+  return out
+end
+
+-- A hole motif's cap `n` under cfg's budget (M.budget).
+function M.motif_cap(n, c)
+  if c.budget == nil then return n end
+  return math.max(1, math.floor(n * c.budget + 0.5))
+end
+
 function M.cfg(base, mix)
   if neutral(mix) then return base end
   local c = {}
@@ -115,6 +141,25 @@ function M.with_palette(palette, fn)
   Tune.color.palette = cur
   if not ok then error(res, 0) end
   return res
+end
+
+-- The mix of the page being grown (M.with_mix), for choices made deep in
+-- the drawing code, such as a leaf's shape; nil outside a page.
+M.active = nil
+
+-- Run fn() with `mix` as the active mix, then restore the previous one.
+function M.with_mix(mix, fn)
+  local prev = M.active
+  M.active = mix
+  local ok, res = pcall(fn)
+  M.active = prev
+  if not ok then error(res, 0) end
+  return res
+end
+
+-- The active mix's weight for `kind` (1 outside a page).
+function M.factor(kind)
+  return M.weight(M.active, kind)
 end
 
 return M

@@ -31,6 +31,12 @@ function M.region(spec)
     x0 = edge, x1 = t.x0 - gutter,
     y0 = edge + 4, y1 = H - edge - 6,
     foot = t.y0 - gutter * 0.8,
+    -- A bare frame (frames.lua) is a band along a curve, with no foot
+    -- for the main stem to run along.
+    bare = spec.bare,
+    -- How far up a gathered stem (the bouquet's) runs from the frame's
+    -- outer edge before it leaves for its line of action.
+    gather = spec.gather,
   }
   g:open(m.x0, m.y0, m.x1, m.y1)
   g:open(m.x0, m.y0, W - edge, m.foot)
@@ -183,15 +189,20 @@ function M.strands(rng, m, hero, W, gest, avoid)
   local main, corner = Plant.main(rng:fork("main"), m, hero, W, gest, avoid)
   local out = { main }
   for _, st in ipairs(Plant.long_shoots(rng:fork("shoots"), main, m, hero, gest, avoid)) do out[#out + 1] = st end
-  for _, st in ipairs(Plant.foot_shoots(rng:fork("foot shoots"), main, m, corner, avoid)) do out[#out + 1] = st end
+  -- A gathered plant's foot is the bouquet's bare, tied stems.
+  if not m.gather then
+    for _, st in ipairs(Plant.foot_shoots(rng:fork("foot shoots"), main, m, corner, avoid)) do out[#out + 1] = st end
+  end
   for _, st in ipairs(Plant.crown(rng:fork("crown"), main, m, hero)) do out[#out + 1] = st end
   for _, st in ipairs(out) do st.width = Plant.width_fn(st) end
   return out, corner, gest
 end
 
 -- The outer-corner sprig: a shoot that leaves the plant's root, sweeps up
--- the outer edge and ends in a volute.
-function M.runners(rng, m, root, W, edge)
+-- the outer edge and ends in a volute. With grid g, a sprig that would
+-- cross text (as by the middle of a flank page, where the frame's outer
+-- corner is) is left out.
+function M.runners(rng, m, root, W, edge, g)
   local S = require("flora.sprig")
   local cx = W - edge - 6
   local a = root
@@ -199,6 +210,9 @@ function M.runners(rng, m, root, W, edge)
   local stem = G.link(a, 0.05, b, pi / 2 + 0.08, 0.6)
   local tip = S.tendril(b, pi / 2 + 0.08, 46, 1)
   for i = 2, #tip do stem[#stem + 1] = tip[i] end
+  for _, q in ipairs(g and stem or {}) do
+    if g:text_at(q[1], q[2]) or g:text_at(q[1] - 2, q[2]) or g:text_at(q[1] + 2, q[2]) then return {} end
+  end
   return { { pts = stem, width = function(t) return 0.8 - 0.6 * t end } }
 end
 

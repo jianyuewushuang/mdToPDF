@@ -1,6 +1,6 @@
 # mdToPDF
 
-> This project is open-sourced on [github](https://github.com/jianyuewushuang/mdToPDF?tab=readme-ov-file) and [gitlink](https://www.gitlink.org.cn/jianyuewushuang/mdToPDF) (China-network friendly).
+> This project is open-sourced on [github](https://github.com/jianyuewushuang/mdToPDF?tab=readme-ov-file) and [gitlink](https://www.gitlink.org.cn/jianyuewushuang/mdToPDF).
 
 A Chinese Markdown-to-PDF project based on **Pandoc + LuaLaTeX**.
 
@@ -53,10 +53,10 @@ mdToPDF/
 │   │   ├── tikzflora.latex           # Standalone tikzflora template
 │   │   └── README.md                 # Config contract and how to add a style
 │   └── vendor/tikzflora/             # tikzflora runtime
-│       ├── LICENSE
-│       ├── tikzflora.sty
-│       ├── tikzflora-boot.lua
-│       └── lua/flora/*.lua
+│       ├── LICENSE / README.md
+│       ├── tikzflora.sty / tikzflora-boot.lua
+│       ├── example.tex / titles.tex / latexmkrc
+│       └── lua/flora/*.lua            # page cache, engraved letters, title layouts
 ├── package.json                      # Node dependency manifest
 └── LICENSE.md                        # PolyForm Noncommercial License 1.0.0
 ```
@@ -255,15 +255,27 @@ This style uses the standalone template `resources/styles/tikzflora.latex`. It k
 
 | Page | Effect |
 | --- | --- |
-| Cover | Centred large title and subtitle, `floratitle` crest / flourish / tailpiece / corner pieces, and a small quotation-like block below showing author and date |
+| Cover | One of the five title-page layouts below; its display lines take `title` / `subtitle` / `author` / `date` in order |
 | Contents | `layout=surround`: a wreath around the text block; no running head when the TOC owns its page |
 | Body | Default `layout=split`: flora grows in the outer margin, right on odd pages and left on even pages (tikzflora's original two-sided look) |
 | Header / footer | Outer-side (even-page left, odd-page right) small-caps text and page number, **no rules**; the cover and a standalone TOC have no header or footer |
 | Whitespace | tikzflora's shipout hook measures the shipped page, so flora grows into gaps such as `\vspace` |
 
-**Centring on demand**: by default the document stays two-sided with asymmetric `inner/outer` margins and `layout=split`, exactly as in tikzflora. When `flora-layout` is a centring layout (`centered` / `surround` / `title`), the template automatically switches to symmetric margins (`left=right=4.6cm`): the text block sits in the same centred position on every page and flora grows symmetrically on both sides. This fixes the earlier issue where `centered` still left the text alternating left and right. An explicit `geometry:` in Front Matter has the highest priority and disables the automatic switch.
+**Five title-page layouts**: `flora-title-layout` accepts `title` / `flank` / `wreath` / `bouquet` / `scrollwork`, defaulting to `flank`. Each reproduces the line counts, sizes, spacing and `\floraletters` engraved capitals of its upstream document: `title` from `example.tex`, the other four from `titles.tex`. None of the fixed English sample wording is kept — the display lines take `title` → `subtitle` → `author` → `date` in order, and a missing field leaves its line blank while the spacing skeleton stays.
 
-Defaults follow the upstream example: `layout=split, seed=3, visitors=0.6`, cover ornaments `sun_crest=6, cul_de_lampe=3`, contents `layout=surround`. Header marks, cartouche panels, foot pendants and gilt are all enabled at tikzflora's default weights and can be tuned with `flora-ornaments`; the decorative border is drawn by the layout itself, with no extra rectangular frame. Every parameter can be overridden in Front Matter:
+| Value | Effect |
+| --- | --- |
+| `title` | Two plants meeting in a crown above the title, with a small quotation-like block below |
+| `flank` | A plant up each side, their roots meeting at the foot (default) |
+| `wreath` | An open oval garland around the title |
+| `bouquet` | One upright bouquet, each title line on a ribbon |
+| `scrollwork` | An oval gilt scroll frame with a crest at its head and flora twined over it |
+
+`flora-title-letters: false` turns the engraved capitals off (CJK titles fall back to ordinary text with a log warning because the font outlines are unavailable, which does not break the build); `flora-title-ornaments` weights ornaments by place.
+
+**Centring on demand**: by default the document stays two-sided with asymmetric `inner/outer` margins and `layout=split`, exactly as in tikzflora. When `flora-layout` is a centring layout (`centered` / `surround` / `title` / `flank` / `wreath` / `bouquet` / `scrollwork`), the template automatically switches to symmetric margins (`left=right=4.6cm`): the text block sits in the same centred position on every page and flora grows symmetrically on both sides. An explicit `geometry:` in Front Matter has the highest priority and disables the automatic switch.
+
+Defaults follow the upstream example: `layout=split, seed=3, visitors=0.6`; `title` / `flank` covers use `ornaments={sun_crest=6, cul_de_lampe=3}` (the other three keep tikzflora's default weights), and the contents page uses `layout=surround`. Header marks, cartouche panels, foot pendants and gilt are all enabled at their default weights; the decorative border is drawn by the layout itself, with no extra rectangular frame. Every parameter can be overridden in Front Matter:
 
 ```yaml
 ---
@@ -277,8 +289,15 @@ toc: true
 toc-own-page: true
 
 flora-layout: centered        # left / right / centered / split / title / surround
-                              # centered / surround / title also enable symmetric margins
+                              # flank / wreath / bouquet / scrollwork
+                              # centring layouts also enable symmetric margins
 flora-header: "Florilegium"   # outer running-head text; defaults to title
+flora-title-layout: bouquet   # title / flank / wreath / bouquet / scrollwork (default flank)
+flora-title-letters: false    # turn engraved display capitals off (on by default)
+flora-title-ornaments: "sun_crest=6, cul_de_lampe=3"
+flora-toc-layout: surround    # contents-page staging (that page only)
+flora-backdrop: dark          # light (default) / dark / a dark #rrggbb
+flora-cache: false            # disable the per-page cache (on by default)
 flora-seed: 3                # number or random (random makes multi-pass output unstable, not recommended)
 flora-density: 0.8           # 0-10, how full the border grows
 flora-visitors: 0.6          # 0-10, weight of bees / butterflies / birds / snails
@@ -287,28 +306,28 @@ flora-spin: 2                # non-negative integer, re-picks random inks
 flora-gilt: raster           # raster / vector
 flora-giltdpi: 600           # 50-1200
 flora-giltenv: studio        # studio / mirror
-flora-mix: "lily=2, umbel=2, ghost=0"          # weights per growth kind
+flora-mix: "lily=2, umbel=2, feather=2, fan=2"  # growth / leaf-shape / bloom-style weights
 flora-palette: "leaves=green, blooms=warm"      # ink per part
 flora-ornaments: "sun_crest=6, cul_de_lampe=3" # weights per ornament kind
 flora-giltlook: "horizon=0.1, grain=0"          # raster gilt look
 flora-setup: "spin=2"        # escape hatch: one extra raw \florasetup, useful for future keys
-flora-title-layout: title    # cover-page staging (that page only)
-flora-title-ornaments: "sun_crest=6, cul_de_lampe=3"
-flora-toc-layout: surround   # contents-page staging (that page only)
 ---
 ```
 
 Notes:
 
 - Map-like keys (`flora-mix`, `flora-palette`, `flora-ornaments`, `flora-giltlook`) are plain `k=v, k=v` strings; `resources/flora.lua` wraps them as `key={...}`. Do **not** include braces, quotes, newlines or LaTeX commands — invalid values fail the build with the offending key name. `flora-header` takes plain text too.
+- The updated `flora-mix` also accepts the leaf shapes `feather` / `acanthus` / `lance` and bloom styles `fan` / `round`; the `crest` place of `flora-ornaments` gained `wreath`.
+- `flora-backdrop` accepts only `light` / `dark` / a dark `#rrggbb`. For `dark` or a custom colour the template sets a matching dark page colour and white body text; tikzflora repaints its inks for the dark ground. Code blocks and admonitions keep eisvogel's light palette, so they may need manual adjustment in dark mode.
+- The updated runtime caches each page's flora in `<jobname>-flora/` (under `build/`, gitignored) so Pandoc's reruns reuse unchanged pages; `flora-cache: false` disables it. Loading `tikzflora` also lowers the PDF compression level to 4 for faster builds — set `\pdfvariable compresslevel=9` via `header-includes` for a smaller file.
 - The mapping is injected as raw LaTeX into the preamble *after* the template defaults, so user values win (tikzflora merges keys on each `\florasetup` call). A `layout=` inside `flora-setup` takes precedence over `flora-layout`.
 - `flora-title-*` / `flora-toc-*` use `\florathispage`, which affects only the **next shipped page** and takes precedence over the global `flora-*` values. They do not affect the global margin decision. If the TOC spans several pages, only its first page gets the wreath.
 - `flora-*` keys apply only to `tikzflora`; they are ignored in eisvogel documents.
 - This style does not use eisvogel's title-page layout, so the following keys have **no effect** under tikzflora: `titlepage-rule-color`, `titlepage-rule-height`, `titlepage-text-color`, `titlepage-background`, `titlepage-color`, `titlepage-logo`, `header-left` / `header-right` / `header-center`, and `footer-left` / `footer-right` / `footer-center`. The body-page `page-background` key still works.
-- See the upstream [tikz-flora guide](https://flora.alpacasoft.dev) for all key names and value ranges; the bundled runtime lives in `resources/vendor/tikzflora/`.
+- See the upstream [tikz-flora guide](https://flora.alpacasoft.dev) for all key names and value ranges; the bundled runtime lives in `resources/vendor/tikzflora/` .
 
 > [!WARNING]
-> Centring layouts such as `centered` draw two plants per page — roughly twice the PGF objects of a single-sided layout — and Pandoc reruns LuaLaTeX several times for the TOC and cross-references, so build time and PDF size grow noticeably. For long documents prefer `flora-gilt: vector`, a lower `flora-giltdpi`, smaller `flora-density` / `flora-visitors`, or an explicit `flora-layout: left` / `right`.
+> Centring layouts and the `wreath` / `bouquet` / `scrollwork` title pages draw two plants per page, and Pandoc reruns LuaLaTeX several times for the TOC and cross-references, so build time and PDF size grow noticeably. For long documents prefer `flora-gilt: vector`, a lower `flora-giltdpi`, smaller `flora-density` / `flora-visitors`, keep the cache enabled, or use an explicit `flora-layout: left` / `right`.
 
 ### GitHub-style admonitions
 

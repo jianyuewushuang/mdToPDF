@@ -21,6 +21,13 @@
 % from the repository root without installing anything.
 \directlua{dofile(kpse.find_file("tikzflora-boot.lua", "tex"))}
 
+% Each page's flora is tens of megabytes of PDF drawing before it is
+% compressed. Level 4 compresses it to within 7% of the size LaTeX's
+% level 9 does, in about a ninth of the time, so the package lowers any
+% higher level to 4; a document can set \pdfvariable compresslevel after
+% loading the package to choose another.
+\ifnum\pdfvariable compresslevel>4 \pdfvariable compresslevel=4 \fi
+
 % Document seed: a number, or "random" to draw new flora on every run.
 \providecommand\florseed{1}
 % A page number to draw flora on that page only (empty: every page). The
@@ -41,6 +48,17 @@
 \newenvironment{floratitle}
   {\par\directlua{flora.mark("title-start")}}
   {\par\directlua{flora.mark("title-end")}}
+
+% Engraved display capitals for title pages, drawn from the font's own
+% outlines (an OpenType or TrueType font, as LuaLaTeX's default is):
+%   {\Huge\floraletters[style=engraved, arch=30]{DICTIONARY}}
+% style is outline, shaded (the default) or engraved; arch bends the
+% baseline through that many degrees (negative sags it); ink names an
+% iroshizuku ink for the line work. See lua/flora/letters.lua.
+\newsavebox\flora@letters
+\newcommand\floraletters[2][]{%
+  \leavevmode\sbox\flora@letters{#2}%
+  \directlua{flora.letters(\number\flora@letters, "\luaescapestring{\detokenize{#1}}")}}
 
 % Draw the specimen sheet inside the current tikzpicture.
 \newcommand\florasheet[1]{\directlua{flora.specimens(#1)}}

@@ -61,6 +61,56 @@ function C.lightness(rgb)
   return 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s
 end
 
+-- sRGB {r, g, b} to OKLCH L, chroma and hue in degrees.
+function C.lch(rgb)
+  local function dec(c)
+    if c <= 0.04045 then return c / 12.92 end
+    return ((c + 0.055) / 1.055) ^ 2.4
+  end
+  local r, g, b = dec(rgb[1]), dec(rgb[2]), dec(rgb[3])
+  local l = cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
+  local m = cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
+  local s = cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
+  local L = 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s
+  local A = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s
+  local B = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s
+  return L, math.sqrt(A * A + B * B), math.deg(math.atan(B, A)) % 360
+end
+
+-- The backdrop `backdrop=dark` paints for: the near-black of a dark web page.
+C.DARK_GROUND = C.oklch(0.17, 0.012, 230)
+
+-- The colour {r, g, b} of backdrop setting `v` ("light", "dark" or
+-- "#rrggbb"), or nil for light (white paper). Returns nil and a message
+-- for anything else, or a colour too light to paint light ink over.
+function C.backdrop(v)
+  if v == nil or v == "light" then return nil end
+  if v == "dark" then return C.DARK_GROUND end
+  local r, g, b = tostring(v):lower():match("^#(%x%x)(%x%x)(%x%x)$")
+  if not r then return nil, "backdrop must be light, dark or a colour as #rrggbb" end
+  local rgb = { tonumber(r, 16) / 255, tonumber(g, 16) / 255, tonumber(b, 16) / 255 }
+  if C.lightness(rgb) > 0.5 then return nil, "a backdrop colour must be dark; use light for pale paper" end
+  return rgb
+end
+
+-- The lightness the darkest ink reaches on a dark ground.
+local GLOW = 0.94
+-- Under 1, pale tints are lifted further off the ground than a straight
+-- turn-over puts them, since the eye tells dark tones apart less well.
+local LIFT = 0.7
+
+-- `rgb`, painted for paper `paper`, repainted for dark ground `ground`:
+-- lightness turned over so the paper's own lightness lands on the
+-- ground's and the darkest ink on GLOW, with hue and chroma kept, so a
+-- dilute wash stays near the ground and a pooled one shines most.
+function C.on_ground(rgb, ground, paper)
+  local Lp = C.lightness(paper)
+  local Lg = C.lightness(ground)
+  local L, Ch, h = C.lch(rgb)
+  local t = math.max(0, math.min(1, (Lp - L) / Lp)) ^ LIFT
+  return C.oklch(Lg + t * (GLOW - Lg), Ch, h)
+end
+
 local function pick(rng, range) return rng:range(range[1], range[2]) end
 
 -- Index of the most chromatic stop of each ink's ramp. Darker than that

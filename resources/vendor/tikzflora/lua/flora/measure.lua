@@ -17,11 +17,17 @@ local WHATSIT, USER = id("whatsit"), node.subtype("user_defined")
 
 -- user_id of the marks \begin{floratitle} and \end{floratitle} leave.
 M.MARK_ID = 0x464c
+-- The mark's name that makes its hlist count as ink, box and all.
+M.INK = "ink"
 
 -- Leave a named mark in the current list; M.boxes reports its height.
 function M.mark(name)
   local n = node.new(WHATSIT, USER)
-  n.user_id, n.type, n.value = M.MARK_ID, 115, name
+  -- One field at a time: setting the type resets the value, and a
+  -- multiple assignment may set them in any order.
+  n.user_id = M.MARK_ID
+  n.type = 115
+  n.value = name
   node.write(n)
 end
 
@@ -66,6 +72,10 @@ local function walk_h(box, x, y, out)
         top = math.min(top or y - h, y - h)
         bot = math.max(bot or y + d, y + d)
       end
+    elseif is_mark(n) and n.value == M.INK then
+      -- A drawing that stands for text (\floraletters): its whole box is
+      -- ink.
+      out[#out + 1] = { x0 = x, x1 = x + box.width, top = y - box.height, bot = y + box.depth }
     elseif is_mark(n) then
       out.marks[n.value] = y
     elseif t == HLIST then

@@ -56,10 +56,10 @@ mdToPDF/
 │   │   ├── tikzflora.latex       # tikzflora 独立模板
 │   │   └── README.md             # 样式配置契约与新增样式指南
 │   └── vendor/tikzflora/         # tikzflora 运行时
-│       ├── LICENSE
-│       ├── tikzflora.sty
-│       ├── tikzflora-boot.lua
-│       └── lua/flora/*.lua
+│       ├── LICENSE / README.md
+│       ├── tikzflora.sty / tikzflora-boot.lua
+│       ├── example.tex / titles.tex / latexmkrc
+│       └── lua/flora/*.lua        # 含缓存、雕刻字母与四种标题页布局模块
 ├── package.json                  # Node 依赖声明
 └── LICENSE.md                    # PolyForm Noncommercial License 1.0.0
 ```
@@ -252,15 +252,27 @@ toc-own-page: true        # 目录单独成页
 
 | 页面 | 效果 |
 | --- | --- |
-| 封面 | 居中大标题与副标题、`floratitle` 花草冠饰 / 尾饰 / 角饰，下方引文式小字块显示作者与日期 |
+| 封面 | 见下方五种标题页布局；文字按 `title` / `subtitle` / `author` / `date` 依次填入原版排版的行 |
 | 目录 | `layout=surround`，环绕花环，独占一页时无页眉页脚 |
 | 正文 | 默认 `layout=split`，花草沿奇数页右侧 / 偶数页左侧外边距生长（tikzflora 原样，区分左右页） |
 | 页眉页脚 | 外侧（偶数页左 / 奇数页右）小型大写标题与页码，**无分隔横线**；封面与独占一页的目录无页眉页脚 |
 | 留白 | 由 `tikzflora` 的 shipout 钩子自动测量，花草会长进 `\vspace` 等空白区域 |
 
-**按需居中**：默认 `layout=split` + `twoside` + `inner/outer` 不对称边距，保持 tikzflora 原样的左右页区分；当 `flora-layout` 为居中类布局（`centered` / `surround` / `title`）时，模板自动改用对称边距 `left=right=4.6cm`，文字块在每一页都固定在页面正中，花草左右对称生长，奇偶页位置完全一致（这修复了早期「开启 centered 后文字仍一页左一页右」的问题）。若同时写了 `geometry:`，以用户显式值为最高优先级，不再自动切换。
+**五种标题页布局**：`flora-title-layout` 可选 `title` / `flank` / `wreath` / `bouquet` / `scrollwork`，默认 `flank`（跟随新版 `example.tex`）。每种按 tikzflora 原版文档复刻行数、字号、间距与 `\floraletters` 雕刻字母样式：`title` 取自 `example.tex` 的冠饰封面，其余四种取自 `titles.tex`。原版里的英文示例文字不保留，标题行依次取 `title` → `subtitle` → `author` → `date`；字段缺失时该行留白、排版骨架不变。
 
-默认参数取自示例：`layout=split, seed=3, visitors=0.6`，封面冠饰默认 `ornaments={sun_crest=6, cul_de_lampe=3}`，目录默认 `layout=surround`。header 标记、cartouche 星图框、pendant 页脚角饰、gilt 金饰等装饰件沿用 tikzflora 默认权重（全部启用），可用 `flora-ornaments` 加权；花草装饰边框由 layout 自动绘制，不额外添加矩形框线。所有参数都可在 Front Matter 中逐项覆盖：
+| 取值 | 效果 |
+| --- | --- |
+| `title` | 两株花草在标题上方合成冠饰，下方引文式小字块 |
+| `flank` | 两株沿页面两侧上升、根部在页脚汇合（默认） |
+| `wreath` | 开放的椭圆花环绕住标题 |
+| `bouquet` | 一束直立花束，每行标题落在丝带上 |
+| `scrollwork` | 椭圆鎏金卷草框，顶部冠饰、花草缠绕其上 |
+
+`flora-title-letters: false` 可关闭雕刻字母（中文标题因缺少字形轮廓会自动回退为普通文字并在日志给出提示，不影响编译）；`flora-title-ornaments` 可按位置加权装饰件。
+
+**按需居中**：默认 `layout=split` + `twoside` + `inner/outer` 不对称边距，保持 tikzflora 原样的左右页区分；当 `flora-layout` 为居中类布局（`centered` / `surround` / `title` / `flank` / `wreath` / `bouquet` / `scrollwork`）时，模板自动改用对称边距 `left=right=4.6cm`，文字块在每一页都固定在页面正中，花草左右对称生长，奇偶页位置完全一致。若同时写了 `geometry:`，以用户显式值为最高优先级，不再自动切换。
+
+默认参数取自示例：`layout=split, seed=3, visitors=0.6`，`title` / `flank` 封面默认 `ornaments={sun_crest=6, cul_de_lampe=3}`（其余三种沿用 tikzflora 默认权重），目录默认 `layout=surround`。header 标记、cartouche 星图框、pendant 页脚角饰、gilt 金饰等装饰件默认全部启用；花草装饰边框由 layout 自动绘制，不额外添加矩形框线。所有参数都可在 Front Matter 中逐项覆盖：
 
 ```yaml
 ---
@@ -274,8 +286,15 @@ toc: true
 toc-own-page: true
 
 flora-layout: centered        # left / right / centered / split / title / surround
-                              # centered / surround / title 会自动启用对称居中边距
+                              # flank / wreath / bouquet / scrollwork
+                              # 居中类布局会自动启用对称边距
 flora-header: "Florilegium"   # 外侧页眉文字，省略时取 title
+flora-title-layout: bouquet   # title / flank / wreath / bouquet / scrollwork（默认 flank）
+flora-title-letters: false    # 关闭雕刻体大写字母（默认开启）
+flora-title-ornaments: "sun_crest=6, cul_de_lampe=3"
+flora-toc-layout: surround    # 目录页编排（仅该页生效）
+flora-backdrop: dark          # light（默认）/ dark / #rrggbb 深色
+flora-cache: false            # 关闭页面缓存（默认开启）
 flora-seed: 3                # 数值或 random（random 会使多轮编译结果不稳定，不推荐）
 flora-density: 0.8           # 0~10，疏密
 flora-visitors: 0.6          # 0~10，蜜蜂/蝴蝶/鸟/蜗牛权重
@@ -284,20 +303,20 @@ flora-spin: 2                # 非负整数，重选随机墨色
 flora-gilt: raster           # raster / vector
 flora-giltdpi: 600           # 50~1200
 flora-giltenv: studio        # studio / mirror
-flora-mix: "lily=2, umbel=2, ghost=0"          # 各类花草权重
+flora-mix: "lily=2, umbel=2, feather=2, fan=2"  # 花草 / 叶形 / 花型权重
 flora-palette: "leaves=green, blooms=warm"      # 各部位墨色
 flora-ornaments: "sun_crest=6, cul_de_lampe=3" # 各位置装饰权重
 flora-giltlook: "horizon=0.1, grain=0"          # 光栅金饰外观
 flora-setup: "spin=2"        # 逃生口：原样追加一条 \florasetup，便于使用未来新增的键
-flora-title-layout: title    # 封面页编排（仅该页生效）
-flora-title-ornaments: "sun_crest=6, cul_de_lampe=3"
-flora-toc-layout: surround   # 目录页编排（仅该页生效）
 ---
 ```
 
 要点：
 
 - 带花括号的键（`flora-mix` / `flora-palette` / `flora-ornaments` / `flora-giltlook`）写成纯字符串 `k=v, k=v`，由 `resources/flora.lua` 包裹成 `key={...}`；值中**不要**自己写花括号、引号、换行或 LaTeX 命令，非法字符会直接报错并指出键名。`flora-header` 同样接受纯文本。
+- 新版 `flora-mix` 还支持叶形 `feather` / `acanthus` / `lance` 与花型 `fan` / `round`；`flora-ornaments` 的 `crest` 位置新增 `wreath`。
+- `flora-backdrop` 只接受 `light` / `dark` / 深色 `#rrggbb`；`dark` 或自定义颜色时模板自动加深色页面底色并把正文设为白字，花草墨色由 tikzflora 自行反相。代码块、提示框等仍沿用 eisvogel 的浅色配色，暗色模式下需自行调整。
+- 新版运行时默认启用页面缓存（`<jobname>-flora/`，位于 `build/` 下且已被忽略），Pandoc 多轮编译时复用未改动的页面；`flora-cache: false` 可关闭。加载 `tikzflora` 时还会把 PDF 压缩级别降到 4 以加快编译，可在 `header-includes` 中设置 `\pdfvariable compresslevel=9` 换取更小的文件。
 - 参数映射由 `flora.lua` 以原始 LaTeX 注入 preamble，位于模板默认值之后，因此用户值覆盖默认值（tikzflora 的 `\florasetup` 按键合并）。`flora-setup` 中的 `layout=` 优先级高于 `flora-layout`。
 - 封面 / 目录的 `flora-title-*` / `flora-toc-*` 通过 `\florathispage` 只对**下一次输出的那一页**生效，优先级高于全局 `flora-*`；它们不参与全局边距判定，目录若跨页，仅首页有花环。
 - `flora-*` 仅对 `tikzflora` 生效，eisvogel 文档中的同名字段会被忽略。
@@ -305,7 +324,7 @@ flora-toc-layout: surround   # 目录页编排（仅该页生效）
 - 键名与取值范围以上游 [tikz-flora 指南](https://flora.alpacasoft.dev) 为准；项目内附带的运行时位于 `resources/vendor/tikzflora/`。
 
 > [!WARNING]
-> `centered` 等居中布局每页绘制两株花草，PGF 对象数约为单侧布局的两倍，叠加 Pandoc 为目录/交叉引用的多轮 LuaLaTeX 编译，耗时与 PDF 体积会明显上升。长文档建议 `flora-gilt: vector`、降低 `flora-giltdpi`、调低 `flora-density` / `flora-visitors`，或显式改用 `flora-layout: left` / `right`。
+> `centered` 等居中布局、以及 `wreath` / `bouquet` / `scrollwork` 标题页每页绘制两株花草，PGF 对象数明显增加，叠加 Pandoc 为目录/交叉引用的多轮 LuaLaTeX 编译，耗时与 PDF 体积会上升。长文档建议 `flora-gilt: vector`、降低 `flora-giltdpi`、调低 `flora-density` / `flora-visitors`，保留默认缓存，或显式改用 `flora-layout: left` / `right`。
 
 ### github风格提示框
 

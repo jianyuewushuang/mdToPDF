@@ -6,3 +6,5 @@ node_modules/
 src/media-*/
 .codebuddy/
 src/luatex.*/
+# tikzflora >= 2026/10 caches each page's flora in <jobname>-flora/
+*-flora/

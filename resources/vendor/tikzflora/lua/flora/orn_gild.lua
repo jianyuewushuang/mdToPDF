@@ -14,6 +14,7 @@ local pal = Paint.palette
 
 M.pale = { 0.965, 0.905, 0.700 }
 M.umber = { 0.330, 0.200, 0.090 }
+Paint.keep[M.pale], Paint.keep[M.umber] = true, true
 
 -- Whether pt paints gilt as computed gold (orn_raster.lua), which needs
 -- the pdf backend.
@@ -102,6 +103,17 @@ function M.dots(pt, pts, r, o)
     return
   end
   Relief.paint(pt, paths, { key = math.min(0.1, r * 0.15) })
+end
+
+-- Everything gilt paints keeps its colour on a dark backdrop (Paint:ink).
+for _, name in ipairs({ "fill", "line", "dots" }) do
+  local f = M[name]
+  M[name] = function(pt, ...)
+    pt.metal = (pt.metal or 0) + 1
+    local ok, err = pcall(f, pt, ...)
+    pt.metal = pt.metal - 1
+    if not ok then error(err, 0) end
+  end
 end
 
 return M

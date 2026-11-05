@@ -1,5 +1,4 @@
 ---
-style: tikzflora
 title: "花草样式示例"
 author: [你的名字]
 date: "2026-11-04"
@@ -12,29 +11,39 @@ block-headings: true
 toc: true
 toc-own-page: true
 
-# tikzflora 页面样式：默认 layout=split（区分左右页，tikzflora 原样）
-# 改为 centered 会自动切换为对称边距，文字块在每页居中，花草左右对称生长
-# flora-layout: centered
+style: tikzflora
+# 标题页布局：title / flank / wreath / bouquet / scrollwork（默认 flank）
+# 五种均按 tikzflora 原版排版，文字依次取 title / subtitle / author / date
+flora-title-layout: bouquet
+# flora-title-letters: false   # 关闭雕刻体大写字母（中文标题会自动回退为普通文字）
+# flora-title-ornaments: "wreath=3"   # 按位置加权装饰件
+
+# 正文布局：默认 split（区分左右页，tikzflora 原样）
+# centered 会自动切换为对称边距，文字块在每页居中，花草左右对称生长
+flora-layout: centered
 # flora-header: "Florilegium"   # 外侧页眉文字，默认取 title
+
+# 新版设置键
+# flora-backdrop: dark          # light / dark / #rrggbb，dark 时自动加深色底色
+# flora-cache: false            # 关闭 <jobname>-flora/ 页面缓存
 
 # tikzflora 绘制参数（可逐项覆盖默认值）
 flora-seed: 3
 flora-visitors: 0.6
-flora-mix: "lily=2, umbel=2, ghost=0"
+flora-mix: "lily=2, umbel=2, ghost=0, feather=2, fan=2"
 flora-palette: "leaves=green"
 flora-ornaments: "sun_crest=6, cul_de_lampe=3"
 # 矢量金饰明显快于光栅金饰；想完全复刻示例的华丽效果可改为 raster
 flora-gilt: vector
 # flora-giltdpi: 150          # 仅 gilt=raster 时生效，长文档建议调低
-flora-layout: centered
-flora-title-layout: bouquet
 ---
 
 > [!NOTE]
-> 本文件使用 `style: tikzflora`，页面样式参考 tikzflora 自带示例：封面为居中
-> 大标题与花草冠饰、目录页有环绕花环、页眉为外侧小型大写文字、页脚外侧为页码，
-> 均无分隔横线。默认 `layout=split` 时区分左右页；写 `flora-layout: centered`
-> 会让文字块在每页居中、花草左右对称生长。页面留白处花草也会自动填充。
+> 本文件使用 `style: tikzflora`，页面样式参考 tikzflora 自带示例：页眉为外侧
+> 小型大写文字、页脚外侧为页码，均无分隔横线；目录页有环绕花环。封面选用
+> `bouquet` 标题页布局，标题文字按 title / subtitle / author / date 依次填充。
+> `flora-layout: centered` 让正文文字块在每页居中、花草左右对称生长；页面
+> 留白处花草也会自动填充。新版运行时默认启用页面缓存并降低 PDF 压缩级别。
 
 ## 二级标题
 

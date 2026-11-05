@@ -88,6 +88,34 @@ function M.plan(spec, B, crest)
   return out, keep
 end
 
+-- The flank layout's foot piece: a crest-slot kind in the lowest gap of
+-- column `block` (frames.lua) that holds it, else in the foot band under
+-- the column. Returns a plan entry, or nil when no kind or no room.
+function M.foot(spec, block)
+  local kind = choose(spec, "crest")
+  if not kind then return nil end
+  local W, t = spec.width, spec.text
+  local s = G.clamp((block.x1 - block.x0) * 0.32, 44, 84)
+  local ls = {}
+  for _, l in ipairs(spec.lines or {}) do
+    if l.x1 > block.x0 and l.x0 < block.x1 and l.y1 > t.y0 - 2 then ls[#ls + 1] = l end
+  end
+  table.sort(ls, function(p, q) return p.y0 < q.y0 end)
+  local y0
+  -- From the bottom up: the first gap between lines that holds the piece.
+  for i = 1, #ls - 1 do
+    if ls[i + 1].y0 - ls[i].y1 >= s + 2 * PAD then y0 = ls[i].y1 + PAD break end
+  end
+  if not y0 then
+    local floor = 18
+    local top = (#ls > 0 and math.min(ls[1].y0, t.y0) or t.y0) - PAD
+    if top - floor < 28 then return nil end
+    s = math.min(s, top - floor)
+    y0 = floor
+  end
+  return { slot = "crest", kind = kind, box = { W / 2 - s / 2, y0, W / 2 + s / 2, y0 + s }, o = {} }
+end
+
 -- Paint the planned furniture onto pt, in page coordinates.
 function M.paint(pt, spec, plan)
   local rng = Rng.new(tonumber(spec.seed) or 1)

@@ -1,0 +1,254 @@
+% A worked example of tikzflora: a short multipage document that uses every
+% layout. Compile it with latexmk, which runs LuaLaTeX (latexmkrc) as
+% often as the table of contents needs, or run lualatex on it twice.
+%
+% Every \florasetup and \florathispage below is commented with what it
+% does; the full list of keys is in README.md and on
+% https://flora.alpacasoft.dev/guide/.
+%
+% The text is in the public domain: Vitruvius, The Ten Books on
+% Architecture, tr. Morris Hicky Morgan (1914), book IV, chapter 1; and
+% Asa Gray, The Elements of Botany (1887), from the Project Gutenberg
+% editions, abridged in places, with figure references and page markers
+% left out.
+\documentclass[11pt,twoside]{article}
+% Two-sided pages with a wide outer margin: the flora grows there.
+\usepackage[a4paper,inner=2cm,outer=5.6cm,top=4.2cm,bottom=3.5cm,
+  headheight=14pt,headsep=18pt]{geometry}
+\usepackage{lipsum}
+\usepackage{fancyhdr}
+\usepackage{tikzflora}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE,RO]{\small\textsc{Florilegium}}
+\fancyfoot[LE,RO]{\small\thepage}
+\renewcommand\headrulewidth{0pt}
+
+% The document's defaults. layout=split puts the flora in the outer margin:
+% on the right of odd pages and the left of even ones. seed picks the
+% garden; change it for a different one, or use seed=random. visitors=0.6
+% invites a few bees, butterflies, birds and snails.
+\florasetup{layout=split, seed=3, visitors=0.6}
+
+\begin{document}
+
+% --- Title page -----------------------------------------------------------
+% A narrower, centred text block leaves room around the title. The flank
+% layout grows a plant up each side of the page, their roots meeting at
+% the foot round a crest. ornaments weighs which kind each place picks:
+% here the sun crest weighs three times its usual, and the cul-de-lampe
+% tailpiece too, for a layout that sets one (layout=title does).
+\newgeometry{left=3.2cm,right=3.2cm,top=5cm,bottom=4cm}
+\thispagestyle{empty}
+\florathispage{layout=flank, ornaments={sun_crest=6, cul_de_lampe=3}}
+\begin{floratitle}
+\centering
+{\Huge\scshape Florilegium\par}
+\vspace{1.2em}
+{\large Of leaves, after Vitruvius and Asa Gray\par}
+\end{floratitle}
+\vspace{6cm}
+\begin{center}
+\begin{minipage}{0.66\textwidth}
+\small\itshape
+The acanthus root, pressed down meanwhile though it was by the weight,
+when springtime came round put forth leaves and stalks in the middle.
+\par\smallskip\upshape\hfill Vitruvius, IV.1
+\end{minipage}
+\end{center}
+\clearpage
+
+% --- Contents -------------------------------------------------------------
+% surround grows a wreath on all four sides of the text block.
+\thispagestyle{empty}
+\florathispage{layout=surround}
+\tableofcontents
+\clearpage
+\restoregeometry
+
+% --- Body -----------------------------------------------------------------
+% The body uses the document default, layout=split.
+\section{The acanthus}
+
+It is related that the original discovery of this form of capital was as
+follows. A free-born maiden of Corinth, just of marriageable age, was
+attacked by an illness and passed away. After her burial, her nurse,
+collecting a few little things which used to give the girl pleasure while
+she was alive, put them in a basket, carried it to the tomb, and laid it on
+top thereof, covering it with a roof-tile so that the things might last
+longer in the open air. This basket happened to be placed just above the
+root of an acanthus. The acanthus root, pressed down meanwhile though it was
+by the weight, when springtime came round put forth leaves and stalks in the
+middle, and the stalks, growing up along the sides of the basket, and
+pressed out by the corners of the tile through the compulsion of its
+weight, were forced to bend into volutes at the outer edges.
+
+% A clearing: a gap taller than about three lines, as a figure would
+% leave. The flora grows into it from the margin.
+\vspace{5.2cm}
+\begin{center}\small\itshape The basket and the tile, left to the margin.\end{center}
+
+Just then Callimachus, whom the Athenians called \emph{katatexitechnos} for
+the refinement and delicacy of his artistic work, passed by this tomb and
+observed the basket with the tender young leaves growing round it.
+Delighted with the novel style and form, he built some columns after that
+pattern for the Corinthians, determined their symmetrical proportions, and
+established from that time forth the rules to be followed in finished
+works of the Corinthian order.
+
+\section{The framework of the leaf}
+
+The framework consists of wood,---a fibrous and tough material which runs
+from the stem through the leaf-stalk, when there is one, in the form of
+parallel threads or bundles of fibres; and in the blade these spread out in
+a horizontal direction, to form the ribs and veins of the leaf. The stout
+main branches of the framework are called the Ribs. When there is only one,
+or a middle one decidedly larger than the rest, it is called the Midrib.
+The smaller divisions are termed Veins; and their still smaller
+subdivisions, Veinlets. The latter subdivide again and again, until they
+become so fine that they are invisible to the naked eye. The fibres of
+which they are composed are hollow; forming tubes by which the sap is
+brought into the leaves and carried to every part.
+
+Venation is the name of the mode of veining, that is, of the way in which
+the veins are distributed in the blade. This is of two principal kinds;
+namely, the parallel-veined, and the netted-veined.
+
+% An indented quotation: the lines start further in, so on pages with the
+% flora on the left it reaches into the indent.
+\begin{quote}
+In Netted-veined (also called Reticulated) leaves, the veins branch off
+from the main rib or ribs, divide into finer and finer veinlets, and the
+branches unite with each other to form meshes of network. That is, they
+anastomose, as anatomists say of the veins and arteries of the body.
+\end{quote}
+
+In parallel-veined leaves, the whole framework consists of slender ribs or
+veins, which run parallel with each other, or nearly so, from the base to
+the point of the leaf,---not dividing and subdividing, nor forming meshes,
+except by minute cross-veinlets. The leaf of any grass, or that of the Lily
+of the Valley will furnish a good illustration. Such parallel veins
+Linn\ae us called Nerves, and parallel-veined leaves are still commonly
+called nerved leaves, while those of the other kind are said to be
+veined,---terms which it is convenient to use, although these ``nerves''
+and ``veins'' are all the same thing, and have no likeness to the nerves and
+little to the veins of animals.
+
+\section{Forms of leaves}
+
+It is necessary to give names to the principal shapes, and to define them
+rather precisely, since they afford easy marks for distinguishing species.
+Beginning with the narrower and proceeding to the broadest forms, a leaf is
+said to be
+
+% Short lines in a list leave a ragged edge for the flora to fill.
+\begin{description}
+\item[Linear,] when narrow, several times longer than wide, and of the same
+  breadth throughout.
+\item[Lanceolate,] or Lance-shaped, when conspicuously longer than wide,
+  and tapering upwards, or both upwards and downwards.
+\item[Oblong,] when nearly twice or thrice as long as broad.
+\item[Elliptical] is oblong with a flowing outline.
+\item[Ovate,] when the outline is like a section of a hen's egg
+  lengthwise, the broader end downward.
+\item[Orbicular,] or Rotund, circular in outline.
+\end{description}
+
+% From here on: twice the lilies and umbels, no ghost blooms, a bird and a
+% butterfly on most pages, and leaves in green inks. mix weights are 1 for
+% the usual amount and 0 for none.
+\florasetup{mix={lily=2, umbel=2, ghost=0, bird=1.5, butterfly=1.5},
+  palette={leaves=green}}
+
+\subsection{Margins}
+
+As to particular outlines of simple leaves (and the same applies to their
+separate parts), they are
+
+\begin{itemize}
+\item \emph{Entire}, when the margin is an even line, without teeth or
+  notches.
+\item \emph{Serrate}, or saw-toothed, when the margin is cut into sharp
+  teeth, like those of a saw, and pointing forwards.
+\item \emph{Dentate}, or toothed, when such teeth point outwards.
+\item \emph{Crenate}, or scalloped, when the teeth are broad and rounded.
+\item \emph{Repand}, undulate, or wavy.
+\item \emph{Sinuate}, when the margin is more strongly sinuous.
+\end{itemize}
+
+\subsection{Lorem ipsum}
+For comparison, a passage of the usual filler.
+
+\lipsum[1-2]
+
+% --- A centred page -------------------------------------------------------
+% centered grows one plant in each side margin, on separate seeds. This
+% page alone paints its blooms and hero in an ink picked at random; spin
+% picks another without moving a single shape.
+\clearpage
+\newgeometry{left=4.6cm,right=4.6cm,top=4.2cm,bottom=3.5cm,headheight=14pt,headsep=18pt}
+\florathispage{layout=centered, palette={blooms=random, hero=random}, spin=2}
+\section{Tendrils}
+
+Tendrils are branches of a very slender sort, like runners, not destined
+like them for propagation, and therefore always destitute of buds or
+leaves, being intended only for climbing. Simple tendrils are such as those
+of Passion-flowers. Compound or branching tendrils are borne by the
+Cucumber and Pumpkin, by the Grape-Vine, Virginia Creeper, etc.
+
+A tendril commonly grows straight and outstretched until it reaches some
+neighboring support, such as a stem, when its apex hooks around it to
+secure a hold; then the whole tendril shortens itself by coiling up
+spirally, and so draws the shoot of the growing plant nearer to the
+supporting object. But the tendrils of the Virginia Creeper, as also the
+shorter ones of the Japanese species, effect the object differently,
+namely, by expanding the tips of the tendrils into a flat disk, with an
+adhesive face. This is applied to the supporting object, and it adheres
+firmly; then a shortening of the tendril and its branches by coiling
+brings up the growing shoot close to the support. This is an adaptation
+for climbing mural rocks or walls, or the trunks of trees, to which
+ordinary tendrils are unable to cling. The Ivy and Poison Ivy attain the
+same result by means of aerial rootlets.
+
+\vspace{4.5cm}
+
+\section{The umbel}
+
+An Umbel, as in the Milkweed, is a sort of flower-cluster where the
+pedicels all spring apparently from the same point, from the top of the
+peduncle, so as to resemble, when spreading, the rays of an umbrella;
+whence the name. Here the pedicels are sometimes called the Rays of the
+umbel. And the bracts, when brought in this way into a cluster or circle,
+form what is called an Involucre.
+
+When the stalks which in the simple umbel are the pedicels of single
+flowers themselves branch into an umbel, a Compound Umbel is formed. This
+is the inflorescence of Caraway, Parsnip, and almost all of the great family
+of Umbelliferous (umbel-bearing) plants.
+\clearpage
+\restoregeometry
+
+% --- Closing --------------------------------------------------------------
+% A short last page: the flora grows into the space below the text, here
+% at a lighter density.
+\florathispage{density=0.6}
+\section{Colophon}
+\raggedright
+Set with \textsf{tikzflora}, whose margins are grown afresh on every page.
+
+It would not exist without two sources: the r/LaTeX thread
+\emph{How do you make these flowers in LaTeX?}
+(\texttt{old.reddit.com/r/LaTeX/comments/1xixznw}) and Kevin Raymond's
+\emph{florilegium} (\texttt{github.com/kevinraymond/florilegium}), whose grown
+margins, animation and visitors this package follows. The ink colours are
+Pilot iroshizuku ramps measured by madoromi
+(\texttt{madoromi.moonwit.ch}); the growth follows Wong, Zongker and Salesin,
+\emph{Computer-Generated Floral Ornament} (SIGGRAPH 1998).
+
+The text is in the public domain: Vitruvius, \emph{The Ten Books on
+Architecture}, translated by Morris Hicky Morgan (1914), and Asa Gray,
+\emph{The Elements of Botany} (1887), both from Project Gutenberg,
+abridged in places and with their figure references left out.
+
+\end{document}

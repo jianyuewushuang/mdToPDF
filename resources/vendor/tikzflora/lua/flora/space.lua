@@ -45,6 +45,13 @@ function S:free(x, y, over_stems)
   return v == 0 or (over_stems and v == 4)
 end
 
+-- Is the cell at (x, y) text?
+function S:text_at(x, y)
+  local i, j = floor(x / self.c), floor(y / self.c)
+  if i < 0 or j < 0 or i >= self.nx or j >= self.ny then return false end
+  return self.v[self:_idx(i, j)] == 2
+end
+
 -- Is the point inside the growing region and clear of text? Placed elements
 -- do not count, so stems may pass under leaves.
 function S:open_at(x, y)

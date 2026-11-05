@@ -43,11 +43,19 @@ local function offset(pts, d)
   return out
 end
 
+-- Points to resample a line `len` pt long at: at least `least`, and one
+-- every BROKEN_STEP pt, so a long stroke follows its curve rather than
+-- cutting chords across it. Taken a hair above the boundary, as in stem.
+local BROKEN_STEP = 6
+local function steps(len, least)
+  return math.max(least, math.floor(len / BROKEN_STEP + 1e-6))
+end
+
 -- Outlines of one broken stroke along polyline `line`, at most `wmax` pt
 -- wide. `gap` (0-1) sets how much of the length is left unpainted; `dry`
 -- (0-1) is the chance a piece splits into threads.
 function B.broken(rng, line, wmax, gap, dry)
-  local pts = G.resample(line, 32)
+  local pts = G.resample(line, steps(G.length(line), 32))
   local nz = G.noise(rng, 16)
   local phase = rng:range(0, 16)
   local out = {}
@@ -56,7 +64,7 @@ function B.broken(rng, line, wmax, gap, dry)
     local t1 = math.min(1, t + rng:range(0.14, 0.5) * (1 - 0.6 * gap))
     local seg = slice(pts, t, t1)
     if #seg >= 2 then
-      seg = G.resample(seg, 10)
+      seg = G.resample(seg, steps(G.length(seg), 10))
       local a, b = t, t1
       local function w(u)
         local tt = a + (b - a) * u
@@ -150,7 +158,10 @@ function B.stem(pt, rng, pts, wfn, cfg)
   local outline = G.smooth(G.ribbon(pts, half), true)
   pt:fill(outline, body, 0.55 + 0.35 * (1 - cfg.stem_brush), { blend = "multiply" })
   if cfg.stem_brush <= 0 then return end
-  local line = G.resample(pts, math.max(8, math.floor(G.length(pts) / 3)))
+  -- A point every 3 pt. Stems are often a whole number of steps long, and
+  -- runtimes sum that length an ulp apart, so the count is taken a hair
+  -- above the boundary to come out the same everywhere.
+  local line = G.resample(pts, math.max(8, math.floor(G.length(pts) / 3 + 1e-6)))
   local wmax = 0
   for i = 0, 10 do wmax = math.max(wmax, wfn(i / 10)) end
   pt:clip_begin(outline)

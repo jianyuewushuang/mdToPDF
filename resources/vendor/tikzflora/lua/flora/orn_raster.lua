@@ -342,7 +342,7 @@ end
 function M.place(pt, im)
   local Paint = require("flora.paint")
   local name = Paint.register_xobject({ nil, image = im })
-  if pdf and pdf.immediateobj then
+  if pdf and pdf.immediateobj and not Paint.standalone then
     local head = string.format("/Type /XObject /Subtype /Image /Width %d /Height %d /BitsPerComponent 8", im.w, im.h)
     local mask = pdf.immediateobj("stream", im.alpha, head .. " /ColorSpace /DeviceGray")
     local img = pdf.immediateobj("stream", im.rgb, head .. string.format(" /ColorSpace /DeviceRGB /SMask %d 0 R", mask))

@@ -62,9 +62,27 @@ function P.register_xobject(entry)
   return entry[1]
 end
 
--- Write a PDF object; outside LuaTeX (unit tests) objects are only counted.
+-- Paint for a standalone page (P.isolated): resources are kept for
+-- pdfout.lua rather than written into the document being compiled.
+P.standalone = false
+
+-- Run fn() against a fresh set of registered resources, as a page of its
+-- own written by pdfout.lua (the page cache, cache.lua), then restore the
+-- document's. Returns fn's results.
+function P.isolated(fn)
+  local saved, was = registered, P.standalone
+  P.reset_resources()
+  P.standalone = true
+  local res = table.pack(pcall(fn))
+  registered, P.standalone = saved, was
+  if not res[1] then error(res[2], 0) end
+  return table.unpack(res, 2, res.n)
+end
+
+-- Write a PDF object; outside LuaTeX (unit tests) and for a standalone
+-- page, objects are only counted.
 local function pdf_object(s)
-  if pdf and pdf.immediateobj then return pdf.immediateobj(s) end
+  if pdf and pdf.immediateobj and not P.standalone then return pdf.immediateobj(s) end
   registered.fake = (registered.fake or 0) + 1
   return registered.fake
 end
@@ -81,7 +99,40 @@ function P.new(opts)
     group = nil,     -- the group currently collecting extents
     -- Gilt as "raster" computed gold (pdf only) or "vector" relief.
     gilt = opts and opts.gilt or Tune.gilt or "raster",
+    -- The dark backdrop {r, g, b} ink is repainted for (P:ink), or nil
+    -- for white paper.
+    backdrop = opts and opts.backdrop or nil,
+    metal = 0,       -- depth of gilding in progress, which keeps its colour
+    inked = {},      -- rgb key -> its colour on the backdrop
   }, P)
+end
+
+-- Colours never repainted for a dark backdrop: metal, which reads on any
+-- ground (orn_gild.lua adds its own), and white, which paints highlights
+-- and glints and stays the lightest thing on the page either way.
+P.keep = { [P.palette.gold] = true, [P.palette.copper] = true, [P.palette.white] = true }
+
+-- `rgb` as it is painted: itself on white paper; on a dark backdrop, its
+-- lightness turned over (color.lua C.on_ground), unless it is one of
+-- P.keep or is painted while gilding.
+function P:ink(rgb)
+  local bd = self.backdrop
+  if not bd or self.metal > 0 or P.keep[rgb] then return rgb end
+  local key = fmt("%.4f,%.4f,%.4f", rgb[1], rgb[2], rgb[3])
+  local c = self.inked[key]
+  if not c then
+    c = require("flora.color").on_ground(rgb, bd, P.palette.paper)
+    self.inked[key] = c
+  end
+  return c
+end
+
+-- On a dark backdrop ink adds light where on paper it takes it away, so
+-- multiply and screen trade places.
+local SWAP = { multiply = "screen", screen = "multiply" }
+function P:blend(mode)
+  if mode and self.backdrop and self.metal == 0 then return SWAP[mode] or mode end
+  return mode
 end
 
 local function n2(v)
@@ -192,10 +243,27 @@ local OPS = {
   },
 }
 
+-- The Bezier arcs of a circle, starting and ending at (x + r, y): four
+-- quarters, or for a circle under SMALL pt in radius two halves, which
+-- stray at most 1.3% of the radius from the true circle (under 0.03 pt)
+-- in little over half the bytes. Most circles on a page are grain dots
+-- and florets well under a point across.
+local K, K2, SMALL = 0.5523, 1.3158, 2
+local function circle_arcs(x, y, r)
+  if r < SMALL then
+    local h = r * K2
+    return { { x + r, y + h, x - r, y + h, x - r, y }, { x - r, y - h, x + r, y - h, x + r, y } }
+  end
+  local k = r * K
+  return {
+    { x + r, y + k, x + k, y + r, x, y + r }, { x - k, y + r, x - r, y + k, x - r, y },
+    { x - r, y - k, x - k, y - r, x, y - r }, { x + k, y - r, x + r, y - k, x + r, y },
+  }
+end
+
 -- While a projection is set (P:project), every coordinate passes through
 -- it before it is written or recorded.
 function P.projected(cmds, pj)
-  local K = 0.5523
   local out = {}
   for _, c in ipairs(cmds) do
     local op = c[1]
@@ -208,20 +276,14 @@ function P.projected(cmds, pj)
       local e, f = pj(c[6], c[7])
       out[#out + 1] = { "c", a, b, cc, d, e, f }
     elseif op == "o" then
-      -- A circle's four Bezier quarters, each control point projected.
+      -- The circle's Bezier arcs (circle_arcs), each control point projected.
       local x, y, r = c[2], c[3], c[4]
-      local k = r * K
-      local function q(px, py) local u, v = pj(px, py) return u, v end
-      local mx, my = q(x + r, y)
+      local mx, my = pj(x + r, y)
       out[#out + 1] = { "m", mx, my }
-      local arcs = {
-        { x + r, y + k, x + k, y + r, x, y + r }, { x - k, y + r, x - r, y + k, x - r, y },
-        { x - r, y - k, x - k, y - r, x, y - r }, { x + k, y - r, x + r, y - k, x + r, y },
-      }
-      for _, a in ipairs(arcs) do
-        local a1, a2 = q(a[1], a[2])
-        local a3, a4 = q(a[3], a[4])
-        local a5, a6 = q(a[5], a[6])
+      for _, a in ipairs(circle_arcs(x, y, r)) do
+        local a1, a2 = pj(a[1], a[2])
+        local a3, a4 = pj(a[3], a[4])
+        local a5, a6 = pj(a[5], a[6])
         out[#out + 1] = { "c", a1, a2, a3, a4, a5, a6 }
       end
       out[#out + 1] = { "z" }
@@ -254,12 +316,22 @@ function P:_pj()
   return pj or fr
 end
 
--- Append the path commands for `cmds`; circles become four Bezier quarters.
+-- Append the path commands for `cmds`; circles become Bezier arcs
+-- (circle_arcs).
 function P:_path(cmds, buf)
-  local K = 0.5523
   local ops = OPS[self.backend]
   local pj = self:_pj()
-  if pj then cmds = P.projected(cmds, pj) end
+  if pj then
+    -- A projected circle is recorded by its arcs' end points, which for
+    -- two halves miss its top and bottom; record those too.
+    for _, c in ipairs(cmds) do
+      if c[1] == "o" and c[4] < SMALL then
+        self:_extend(pj(c[2], c[3] + c[4]))
+        self:_extend(pj(c[2], c[3] - c[4]))
+      end
+    end
+    cmds = P.projected(cmds, pj)
+  end
   for _, c in ipairs(cmds) do
     local op = c[1]
     if op == "m" then
@@ -275,12 +347,10 @@ function P:_path(cmds, buf)
       buf[#buf + 1] = ops.z
     elseif op == "o" then
       local x, y, r = c[2], c[3], c[4]
-      local k = r * K
       buf[#buf + 1] = ops.m(x + r, y)
-      buf[#buf + 1] = ops.c(x + r, y + k, x + k, y + r, x, y + r)
-      buf[#buf + 1] = ops.c(x - k, y + r, x - r, y + k, x - r, y)
-      buf[#buf + 1] = ops.c(x - r, y - k, x - k, y - r, x, y - r)
-      buf[#buf + 1] = ops.c(x + k, y - r, x + r, y - k, x + r, y)
+      for _, a in ipairs(circle_arcs(x, y, r)) do
+        buf[#buf + 1] = ops.c(a[1], a[2], a[3], a[4], a[5], a[6])
+      end
       buf[#buf + 1] = ops.z
       self:_extend(x, y, r)
     end
@@ -308,16 +378,18 @@ function P:fill(cmds, rgb, opacity, opts)
     self.gilding = true
     return
   end
+  rgb = self:ink(rgb)
+  local blend = self:blend(opts.blend)
   local pdf = self.backend == "pdf"
   local buf = { pdf and "q" or "\\pgfscope" }
   if pdf then
     local op = opacity and opacity < 1 and opacity or 1
-    if op < 1 or opts.blend then
-      buf[#buf + 1] = "/" .. self:gstate(op, 1, BLEND[opts.blend or "normal"]) .. " gs"
+    if op < 1 or blend then
+      buf[#buf + 1] = "/" .. self:gstate(op, 1, BLEND[blend or "normal"]) .. " gs"
     end
     buf[#buf + 1] = rgb3(rgb) .. " rg"
   else
-    if opts.blend then buf[#buf + 1] = fmt("\\pgfsetblendmode{%s}", opts.blend) end
+    if blend then buf[#buf + 1] = fmt("\\pgfsetblendmode{%s}", blend) end
     buf[#buf + 1] = fmt("\\pgfsetfillcolor{%s}", self:color(rgb))
     if opacity and opacity < 1 then
       buf[#buf + 1] = fmt("\\pgfsetfillopacity{%s}", n2(opacity))
@@ -346,16 +418,18 @@ function P:stroke(cmds, rgb, width, opacity, opts)
     self.gilding = true
     return
   end
+  rgb = self:ink(rgb)
+  local blend = self:blend(opts.blend)
   local pdf = self.backend == "pdf"
   local buf = { pdf and "q" or "\\pgfscope" }
   if pdf then
     local op = opacity and opacity < 1 and opacity or 1
-    if op < 1 or opts.blend then
-      buf[#buf + 1] = "/" .. self:gstate(1, op, BLEND[opts.blend or "normal"]) .. " gs"
+    if op < 1 or blend then
+      buf[#buf + 1] = "/" .. self:gstate(1, op, BLEND[blend or "normal"]) .. " gs"
     end
     buf[#buf + 1] = rgb3(rgb) .. " RG " .. b2(width) .. " w 1 J 1 j"
   else
-    if opts.blend then buf[#buf + 1] = fmt("\\pgfsetblendmode{%s}", opts.blend) end
+    if blend then buf[#buf + 1] = fmt("\\pgfsetblendmode{%s}", blend) end
     buf[#buf + 1] = fmt("\\pgfsetstrokecolor{%s}\\pgfsetlinewidth{%spt}", self:color(rgb), n2(width))
     buf[#buf + 1] = "\\pgfsetroundcap\\pgfsetroundjoin"
     if opacity and opacity < 1 then
@@ -375,9 +449,15 @@ end
 -- Declare a gradient once. `stops` lists {position 0-1, rgb}. For the pgf
 -- backend this is a horizontal PGF shading spanning 100bp; for the pdf
 -- backend the stops are kept and become a pattern when `shade` places them.
+-- On a dark backdrop the stops are repainted (P:ink) as they are declared.
 function P:shading(name, stops)
   self.shadings = self.shadings or {}
   if self.shadings[name] then return name end
+  if self.backdrop then
+    local inked = {}
+    for i, s in ipairs(stops) do inked[i] = { s[1], self:ink(s[2]) } end
+    stops = inked
+  end
   self.shadings[name] = stops
   if self.backend == "pgf" then
     local parts = {}

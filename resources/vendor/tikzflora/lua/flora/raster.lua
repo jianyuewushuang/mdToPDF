@@ -7,7 +7,7 @@
 local R = {}
 
 local floor, ceil, sqrt, min, max = math.floor, math.ceil, math.sqrt, math.min, math.max
-local K = 0.5523  -- circle quarter as a Bezier, as paint.lua draws it
+local K = 0.5523  -- circle quarter as a Bezier, as paint.lua draws circles of 2 pt radius and more
 
 -- A grid over page rectangle x0..x1, y0..y1 (pt) at `s` pt per pixel,
 -- grown to whole pixels.

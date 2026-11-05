@@ -224,20 +224,29 @@ local function reach_map(g)
   function m.add(stem, step)
     local pts = stem.pts
     local c, nx, ny = g.c, g.nx, g.ny
+    local sd, keys, sqrt = m.sd, m.keys, math.sqrt
+    local nk = #keys
     for i = 2, #pts - 1, step or 3 do
       local p = pts[i]
-      m.pts[#m.pts + 1] = { p[1], p[2], G.angle(pts[i - 1], pts[i + 1]), stem, (i - 1) / (#pts - 1) }
-      local i0, i1 = max(0, floor((p[1] - REACH) / c)), min(nx - 1, floor((p[1] + REACH) / c))
-      local j0, j1 = max(0, floor((p[2] - REACH) / c)), min(ny - 1, floor((p[2] + REACH) / c))
+      local px, py = p[1], p[2]
+      m.pts[#m.pts + 1] = { px, py, G.angle(pts[i - 1], pts[i + 1]), stem, (i - 1) / (#pts - 1) }
+      local i0, i1 = max(0, floor((px - REACH) / c)), min(nx - 1, floor((px + REACH) / c))
+      local j0, j1 = max(0, floor((py - REACH) / c)), min(ny - 1, floor((py + REACH) / c))
       for j = j0, j1 do
-        local dy = (j + 0.5) * c - p[2]
+        local dy = (j + 0.5) * c - py
+        local row = j * nx
         for ii = i0, i1 do
-          local dx = (ii + 0.5) * c - p[1]
-          local k = j * nx + ii
-          local d = math.sqrt(dx * dx + dy * dy)
-          local old = m.sd[k]
-          if not old then m.keys[#m.keys + 1] = k end
-          if not old or d < old then m.sd[k] = d end
+          local dx = (ii + 0.5) * c - px
+          local k = row + ii
+          local d = sqrt(dx * dx + dy * dy)
+          local old = sd[k]
+          if not old then
+            nk = nk + 1
+            keys[nk] = k
+            sd[k] = d
+          elseif d < old then
+            sd[k] = d
+          end
         end
       end
     end
@@ -260,10 +269,10 @@ local function motifs(mw, cfg, rng, mix)
   local kr = rng:range(cfg.features[1], cfg.features[2])
   local all = {
     { kind = "bloom", w = 3, cap = cfg.small_blooms, rmin = 9, rmax = mw * 0.13 * kr },
-    { kind = "soft", w = 1.5, cap = 2, rmin = 10, rmax = mw * 0.12 * kr },
-    { kind = "lily", w = 1.2, cap = 1, rmin = 16, rmax = mw * 0.21 * kr },
+    { kind = "soft", w = 1.5, cap = Mix.motif_cap(2, cfg), rmin = 10, rmax = mw * 0.12 * kr },
+    { kind = "lily", w = 1.2, cap = Mix.motif_cap(1, cfg), rmin = 16, rmax = mw * 0.21 * kr },
     { kind = "ghost", w = 1, cap = 1, rmin = 16, rmax = mw * 0.22 * kr, below = 0.4 },
-    { kind = "umbel", w = 1.6, cap = 3, rmin = 12, rmax = mw * 0.19 * kr },
+    { kind = "umbel", w = 1.6, cap = Mix.motif_cap(3, cfg), rmin = 12, rmax = mw * 0.19 * kr },
     { kind = "cyme", w = 3, rmin = 7, rmax = 22, spray = true },
     { kind = "gyps", w = 4, rmin = 5, rmax = 30, spray = true },
   }
@@ -295,8 +304,16 @@ function Grow.holes(g, rng, ctx)
   local kinds = motifs(ctx.mw, cfg, rng:fork("motifs"), ctx.mix)
   local counts, sprays, rejected = ctx.counts or {}, 0, {}
   local f, nx, c = g.f, g.nx, g.c
-  local function floor_at(x, y)
-    return cfg.hole_min * (1 + 1.4 * (1 - ctx.dens(x, y)))
+  -- The density field is fixed for the page, so each cell's floor is
+  -- worked out once, the first time the scan below asks for it.
+  local floors = {}
+  local function floor_at(k, x, y)
+    local v = floors[k]
+    if not v then
+      v = cfg.hole_min * (1 + 1.4 * (1 - ctx.dens(x, y)))
+      floors[k] = v
+    end
+    return v
   end
   for iter = 1, 400 do
     local best, bi = -1, nil
@@ -307,7 +324,7 @@ function Grow.holes(g, rng, ctx)
         local v = fk * jitter(k, iter)
         if v > best then
           local x, y = (k % nx + 0.5) * c, (k // nx + 0.5) * c
-          if fk >= floor_at(x, y) then best, bi = v, k end
+          if fk >= floor_at(k, x, y) then best, bi = v, k end
         end
       end
     end

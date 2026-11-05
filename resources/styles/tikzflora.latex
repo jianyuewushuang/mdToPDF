@@ -95,6 +95,11 @@ $if(beamerarticle)$
 \usepackage{beamerarticle} % needs to be loaded first
 $endif$
 \usepackage{xcolor}
+$-- TIKZFLORA ADAPTATIONS: backdrop=dark / #rrggbb recolours the flora only;
+$-- pagecolor gives the page a matching dark ground (README settings table).
+$if(flora-backdrop-dark)$
+\usepackage{pagecolor}
+$endif$
 $if(footnotes-pretty)$
 % load footmisc in order to customize footnotes (footmisc has to be loaded before hyperref, cf. https://tex.stackexchange.com/a/169124/144087)
 \usepackage[hang,flushmargin,bottom,multiple]{footmisc}
@@ -107,10 +112,11 @@ $if(geometry)$
 \usepackage[$for(geometry)$$geometry$$sep$,$endfor$]{geometry}
 $else$
 $-- TIKZFLORA ADAPTATIONS: an explicit geometry: in Front Matter wins. Otherwise
-$-- centred layouts (centered / surround / title) get symmetric margins so the
-$-- text block stays in the same place on odd and even pages, matching the
-$-- centred page of example.tex. The default split keeps the original asymmetric
-$-- inner/outer margins. flora.lua sets flora-centered from flora-layout.
+$-- centred layouts (centered / surround / title / flank / wreath / bouquet /
+$-- scrollwork) get symmetric margins so the text block stays in the same place
+$-- on odd and even pages, matching the centred page of example.tex. The default
+$-- split keeps the original asymmetric inner/outer margins. flora.lua sets
+$-- flora-centered from flora-layout.
 $if(flora-centered)$
 \usepackage[a4paper,left=4.6cm,right=4.6cm,top=4.2cm,bottom=3.5cm,headheight=14pt,headsep=18pt]{geometry}
 $else$
@@ -955,9 +961,11 @@ $endif$
 % TIKZFLORA ADAPTATIONS: fallbacks for the per-page setups. When the style's
 % flora.lua filter is attached, it defines these earlier (in header-includes)
 % using the Front Matter overrides; \providecommand keeps this template usable
-% on its own and never overrides the filter's definitions.
+% on its own and never overrides the filter's definitions. flank is the new
+% upstream default cover (example.tex).
+\providecommand{\floraTitleLine}[2][]{\floraletters[#1]{#2}}
 \providecommand{\floraTitlePageSetup}{%
-  \florathispage{layout=title, ornaments={sun_crest=6, cul_de_lampe=3}}%
+  \florathispage{layout=flank, ornaments={sun_crest=6, cul_de_lampe=3}}%
 }
 \providecommand{\floraTocPageSetup}{%
   \florathispage{layout=surround}%
@@ -965,28 +973,40 @@ $endif$
 
 \begin{document}
 
+$-- TIKZFLORA ADAPTATIONS: set the page colour for a dark backdrop. A named
+$-- colour avoids \pagecolor[HTML]{...}, whose optional argument this LaTeX
+$-- kernel treats as a colour name ("Undefined color `['"). \color keeps the
+$-- body text readable; links/blocks keep their own preamble colours.
+$if(flora-backdrop-dark)$
+\definecolor{florabackdrop}{HTML}{$flora-backdrop-html$}
+\pagecolor{florabackdrop}
+\color{white}
+$endif$
+
 $if(titlepage)$
-% TIKZFLORA ADAPTATIONS: the cover is a literal copy of example.tex (L43-61),
-% including the plain \newgeometry + \clearpage structure instead of a KOMA
-% titlepage environment. layout=title measures the floratitle marks to place
-% the two crowns; the titlepage environment's vertical alignment puts that
-% block outside the frame and makes tikzflora's frames.lua assert.
-% No colour rule, grey text, flushleft or background. All four Front Matter
-% fields are conditional, so a missing field still compiles. \scshape is
-% omitted: it has no effect on CJK glyphs and triggers fontspec warnings.
+% TIKZFLORA ADAPTATIONS: five title-page layouts, each following tikzflora's
+% own document: title = example.tex's crowned cover (older upstream), and
+% flank / wreath / bouquet / scrollwork = titles.tex (line counts, sizes,
+% spacing and \floraletters styles). example.tex now uses flank by default.
+% Every display line takes Front Matter in order: title, subtitle, author,
+% date. None of titles.tex's fixed English sample wording is kept, and a
+% missing field simply leaves its line blank (the spacing skeleton stays).
+% The plain \newgeometry + \clearpage structure is required: a KOMA
+% titlepage environment shifts the title block outside the measured frame.
 \newgeometry{left=3.2cm,right=3.2cm,top=5cm,bottom=4cm}
 \thispagestyle{empty}
 \floraTitlePageSetup
+$if(flora-title-title)$
+% --- title: example.tex's cover, two crowns over the title ----------------
 \begin{floratitle}
 \centering
-% TIKZFLORA ADAPTATIONS: layout=title builds two mirrored frames from the
-% ink boxes measured between these marks. A short centred CJK title is too
-% narrow for those frames (frames.lua asserts "text block lies outside its
-% frame"); example.tex gets away with it because its long Latin subtitle is
-% wide. This zero-height full-width rule is invisible but makes the measured
-% title block span the whole text area, so any title length works.
+% A short centred CJK title is too narrow for layout=title's mirrored frames
+% (frames.lua asserts "text block lies outside its frame"). This invisible,
+% zero-height full-width rule makes the measured block span the text area.
 \noindent\textcolor{white}{\rule{\textwidth}{0.0001pt}}\par
+$if(title)$
 {\Huge $title$\par}
+$endif$
 $if(subtitle)$
 \vspace{1.2em}
 {\large $subtitle$\par}
@@ -1004,6 +1024,99 @@ $if(date)$
 $endif$
 \end{minipage}
 \end{center}
+$elseif(flora-title-flank)$
+% --- flank: plants up both sides, roots meeting at the foot (titles.tex L21-39)
+\vspace*{1cm}
+\begin{floratitle}
+\centering
+\noindent\textcolor{white}{\rule{\textwidth}{0.0001pt}}\par
+$if(title)$
+{\fontsize{46}{52}\selectfont\floraTitleLine[style=shaded]{$title$}\par}
+$endif$
+\vspace{.4em}
+$if(subtitle)$
+{\fontsize{30}{36}\selectfont\floraTitleLine[style=engraved, arch=24]{$subtitle$}\par}
+$endif$
+\vspace{1em}
+$if(author)$
+{\large\itshape $for(author)$$author$$sep$, $endfor$\par}
+$endif$
+\end{floratitle}
+\vspace{1.5em}
+$if(date)$
+{\centering\small\scshape $date$\par}
+$endif$
+\vfill
+$elseif(flora-title-wreath)$
+% --- wreath: open oval garland round the title (titles.tex L41-57) --------
+\vspace*{\fill}
+\begin{floratitle}
+\centering
+\noindent\textcolor{white}{\rule{\textwidth}{0.0001pt}}\par
+$if(title)$
+{\Large\floraTitleLine[style=outline]{$title$}\par}
+$endif$
+\vspace{1.4em}
+$if(subtitle)$
+{\fontsize{34}{40}\selectfont\floraTitleLine[style=shaded]{$subtitle$}\par}
+$endif$
+\vspace{1.2em}
+$if(author)$
+{\Large\floraTitleLine[style=outline]{$for(author)$$author$$sep$, $endfor$}\par}
+$endif$
+\vspace{1.2em}
+$if(date)$
+{\fontsize{34}{40}\selectfont\floraTitleLine[style=shaded]{$date$}\par}
+$endif$
+\end{floratitle}
+\vspace*{\fill}
+$elseif(flora-title-bouquet)$
+% --- bouquet: upright bouquet, each line on a ribbon (titles.tex L59-76) --
+\vspace*{\fill}
+\begin{floratitle}
+\centering
+\noindent\textcolor{white}{\rule{\textwidth}{0.0001pt}}\par
+$if(title)$
+\hspace*{3em}{\LARGE\floraTitleLine[style=outline]{$title$}\par}
+$endif$
+\vspace{2.2em}
+$if(subtitle)$
+\hspace*{-2em}{\fontsize{30}{36}\selectfont\floraTitleLine[style=engraved]{$subtitle$}\par}
+$endif$
+\vspace{2.2em}
+$if(author)$
+\hspace*{1em}{\LARGE\floraTitleLine[style=outline]{$for(author)$$author$$sep$, $endfor$}\par}
+$endif$
+\vspace{2.2em}
+$if(date)$
+{\fontsize{30}{36}\selectfont\floraTitleLine[style=engraved]{$date$}\par}
+$endif$
+\end{floratitle}
+\vfill
+$elseif(flora-title-scrollwork)$
+% --- scrollwork: gilt scroll oval, with a head crest (titles.tex L78-95) --
+\vspace*{\fill}
+\begin{floratitle}
+\centering
+\noindent\textcolor{white}{\rule{\textwidth}{0.0001pt}}\par
+$if(title)$
+{\fontsize{28}{34}\selectfont\floraTitleLine[style=engraved, arch=32, ink=tsuki-yo]{$title$}\par}
+$endif$
+\vspace{.5em}
+$if(subtitle)$
+{\small\scshape $subtitle$\par}
+$endif$
+\vspace{2em}
+$if(author)$
+{\footnotesize\itshape $for(author)$$author$$sep$, $endfor$\par}
+$endif$
+\vspace{2em}
+$if(date)$
+{\Large\floraTitleLine[style=shaded]{$date$}\par}
+$endif$
+\end{floratitle}
+\vspace*{\fill}
+$endif$
 \clearpage
 \restoregeometry
 \pagenumbering{arabic}

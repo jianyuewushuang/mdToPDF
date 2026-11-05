@@ -11,12 +11,12 @@ local BP = 72 / 72.27
 local HEX = {}
 for i = 0, 255 do HEX[string.char(i)] = string.format("%02x", i) end
 
--- A stream object: Flate-compressed where zlib exists (texlua has it),
--- else hex, so the PDF stays ASCII text (the site hands it to pdf.js as a
--- JavaScript string).
-local function stream(attr, data)
+-- A stream object: Flate-compressed at `level` (default 6) where zlib
+-- exists (texlua has it), else hex, so the PDF stays ASCII text (the site
+-- hands it to pdf.js as a JavaScript string).
+local function stream(attr, data, level)
   if zlib and zlib.compress then
-    data = zlib.compress(data, 6)
+    data = zlib.compress(data, level or 6)
     attr = attr .. " /Filter /FlateDecode"
   else
     data = data:gsub(".", HEX) .. ">"
@@ -26,8 +26,9 @@ local function stream(attr, data)
 end
 
 -- Painter `pt` as the bytes of a PDF page `width` x `height` pt (TeX
--- points).
-function M.encode(pt, width, height)
+-- points). The page's content is left uncompressed unless `level` (1-9)
+-- is given, which compresses it and the images at that zlib level.
+function M.encode(pt, width, height, level)
   local res = Paint.resources()
   -- Objects: 1 catalog, 2 page tree, 3 page, 4 content, 5.. patterns.
   local objects = {}
@@ -42,8 +43,8 @@ function M.encode(pt, width, height)
   for _, x in ipairs(res.xobjects or {}) do
     local im, n = x.image, 4 + #res.patterns + 2 * #xobj
     local head = string.format("/Type /XObject /Subtype /Image /Width %d /Height %d /BitsPerComponent 8", im.w, im.h)
-    objects[n + 1] = stream(head .. " /ColorSpace /DeviceGray", im.alpha)
-    objects[n + 2] = stream(head .. string.format(" /ColorSpace /DeviceRGB /SMask %d 0 R", n + 1), im.rgb)
+    objects[n + 1] = stream(head .. " /ColorSpace /DeviceGray", im.alpha, level)
+    objects[n + 2] = stream(head .. string.format(" /ColorSpace /DeviceRGB /SMask %d 0 R", n + 1), im.rgb, level)
     xobj[#xobj + 1] = string.format("/%s %d 0 R", x[1], n + 2)
   end
   local content = pt:body()
@@ -52,7 +53,11 @@ function M.encode(pt, width, height)
   objects[3] = string.format("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.2f %.2f] "
     .. "/Resources << /ExtGState << %s >> /Pattern << %s >> /XObject << %s >> >> /Contents 4 0 R >>",
     width * BP, height * BP, table.concat(gs, " "), table.concat(pats, " "), table.concat(xobj, " "))
-  objects[4] = string.format("<< /Length %d >>\nstream\n%s\nendstream", #content, content)
+  if level and level > 0 and zlib and zlib.compress then
+    objects[4] = stream("", content, level)
+  else
+    objects[4] = string.format("<< /Length %d >>\nstream\n%s\nendstream", #content, content)
+  end
 
   local parts, pos = {}, 0
   local function put(s) parts[#parts + 1] = s; pos = pos + #s end
@@ -103,12 +108,12 @@ local function rgba64(im)
 end
 M.rgba64 = rgba64
 
--- Painter `pt` as a scene for the site's canvas renderer
--- (site/src/lib/scene.js): JSON holding the page size in bp, the content
+-- Painter `pt` as a scene for the site's renderers (flora's PDF scene
+-- reader, src/pdf-scene.ts, via site/src/lib/draw.js): JSON holding the page size in bp, the content
 -- stream exactly as the PDF page carries it, and its resources as data —
 -- each opacity state's ca, CA and blend mode, each pattern's axis (bp)
 -- and colour stops, and each image's size and base64 RGBA pixels. The
--- canvas replays the same operators the PDF holds.
+-- renderers replay the same operators the PDF holds.
 function M.scene(pt, width, height)
   local res = Paint.resources()
   local function num(v) return string.format("%.4f", v) end

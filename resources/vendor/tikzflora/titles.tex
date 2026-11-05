@@ -1,0 +1,95 @@
+% Title pages: one page for each title layout of tikzflora, after the
+% engraved and hand-coloured title pages of nineteenth-century flower
+% books, with their display lines in \floraletters, which draws engraved
+% capitals from the font's own outlines. Compile with LuaLaTeX:
+%
+%   lualatex titles      (or: latexmk titles)
+%
+% Each page sets its layout with \florathispage and marks its title with
+% the floratitle environment; the guide on https://flora.alpacasoft.dev
+% describes every key.
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{tikzflora}
+
+\pagestyle{empty}
+\setlength\parindent{0pt}
+\florasetup{seed=5}
+
+\begin{document}
+
+% --- Flank ---------------------------------------------------------------
+% Two plants rise up the sides of the page and meet at its foot, round a
+% piece in the middle. The title sits in the open column between them.
+\florathispage{layout=flank}
+\vspace*{1cm}
+\begin{floratitle}
+\centering
+{\fontsize{46}{52}\selectfont\floraletters[style=shaded]{FLORA'S}\par}
+\vspace{.4em}
+% arch bends the line through 24 degrees, as an engraver lettered it.
+{\fontsize{30}{36}\selectfont\floraletters[style=engraved, arch=24]{DICTIONARY}\par}
+\vspace{1em}
+{\large\itshape of the flowers of the field\par}
+\end{floratitle}
+\vspace{1.5em}
+{\centering\small\scshape Embellished in fountain-pen inks\par}
+\vfill
+{\centering\footnotesize\scshape Baltimore\par}
+\clearpage
+
+% --- Wreath --------------------------------------------------------------
+% An open oval garland round the title.
+\florathispage{layout=wreath}
+\vspace*{\fill}
+\begin{floratitle}
+\centering
+{\Large\floraletters[style=outline]{THE}\par}
+\vspace{1.4em}
+{\fontsize{34}{40}\selectfont\floraletters[style=shaded]{LANGUAGE}\par}
+\vspace{1.2em}
+{\Large\floraletters[style=outline]{OF}\par}
+\vspace{1.2em}
+{\fontsize{34}{40}\selectfont\floraletters[style=shaded]{FLOWERS.}\par}
+\end{floratitle}
+\vspace*{\fill}
+{\centering\footnotesize\scshape London, at the sign of the acanthus\par}
+\clearpage
+
+% --- Bouquet -------------------------------------------------------------
+% One upright bouquet; each line of the title sits on a ribbon wound
+% through it.
+\florathispage{layout=bouquet}
+\vspace*{\fill}
+\begin{floratitle}
+\centering
+\hspace*{3em}{\LARGE\floraletters[style=outline]{THE}\par}
+\vspace{2.2em}
+\hspace*{-2em}{\fontsize{30}{36}\selectfont\floraletters[style=engraved]{GARDEN}\par}
+\vspace{2.2em}
+\hspace*{1em}{\LARGE\floraletters[style=outline]{OF}\par}
+\vspace{2.2em}
+{\fontsize{30}{36}\selectfont\floraletters[style=engraved]{LANGUAGE}\par}
+\end{floratitle}
+\vfill
+{\centering\footnotesize\scshape Fisher, Son \& Co.\ London\par}
+\clearpage
+
+% --- Scrollwork ----------------------------------------------------------
+% An oval of gilt scrollwork round the title, with the flora grown over it.
+\florathispage{layout=scrollwork}
+\vspace*{\fill}
+\begin{floratitle}
+\centering
+{\fontsize{28}{34}\selectfont\floraletters[style=engraved, arch=32, ink=tsuki-yo]{MY FIRST GARDEN}\par}
+\vspace{.5em}
+{\small\scshape A book for youth\par}
+\vspace{2em}
+{\footnotesize\itshape Consider the lilies of the field, how they grow;\\
+they toil not, neither do they spin.\par}
+\vspace{2em}
+{\small by\par}
+{\Large\floraletters[style=shaded]{A GARDENER}\par}
+\end{floratitle}
+\vspace*{\fill}
+\end{document}

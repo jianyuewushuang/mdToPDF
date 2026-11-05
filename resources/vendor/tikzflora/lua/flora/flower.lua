@@ -5,6 +5,7 @@ local W = require("flora.wash")
 local Paint = require("flora.paint")
 local Color = require("flora.color")
 local Tune = require("flora.tune")
+local Mix = require("flora.mix")
 local pal = Paint.palette
 
 local F = {}
@@ -207,10 +208,11 @@ local STYLE = {
 }
 F.styles = STYLE
 
--- One of `names` (bloom styles), picked by their tune.blooms weights.
+-- One of `names` (bloom styles), picked by their tune.blooms weights
+-- times the page's mix weight for the style (mix.lua).
 function F.pick_style(rng, names)
   local w = {}
-  for _, n in ipairs(names) do w[n] = math.max(0, Tune.blooms[n].weight) end
+  for _, n in ipairs(names) do w[n] = math.max(0, Tune.blooms[n].weight) * Mix.factor(n) end
   local total = 0
   for _, v in pairs(w) do total = total + v end
   if total <= 0 then return names[1] end
