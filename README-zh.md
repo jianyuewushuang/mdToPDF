@@ -248,26 +248,34 @@ toc-own-page: true        # 目录单独成页
 
 #### `style: tikzflora`
 
-该样式使用独立模板 `resources/styles/tikzflora.latex`，完整保留中文适配、提示框、代码块、封面、目录、链接着色等全部特性，并复刻上游示例 `example.tex` 的逐页编排：
+该样式使用独立模板 `resources/styles/tikzflora.latex`，完整保留中文适配、提示框、代码块、封面、目录、链接着色等全部特性，页面样式参考上游示例 `example.tex`：
 
 | 页面 | 效果 |
 | --- | --- |
-| 封面 | `layout=title`，标题块带冠饰（`floratitle`）、尾饰与角饰，并居中收窄文本区 |
-| 目录 | `layout=surround`，环绕花环 |
-| 正文 | `layout=split`，花草沿奇数页右侧 / 偶数页左侧外边距逐页生长 |
+| 封面 | 居中大标题与副标题、`floratitle` 花草冠饰 / 尾饰 / 角饰，下方引文式小字块显示作者与日期 |
+| 目录 | `layout=surround`，环绕花环，独占一页时无页眉页脚 |
+| 正文 | 默认 `layout=split`，花草沿奇数页右侧 / 偶数页左侧外边距生长（tikzflora 原样，区分左右页） |
+| 页眉页脚 | 外侧（偶数页左 / 奇数页右）小型大写标题与页码，**无分隔横线**；封面与独占一页的目录无页眉页脚 |
 | 留白 | 由 `tikzflora` 的 shipout 钩子自动测量，花草会长进 `\vspace` 等空白区域 |
 
-默认参数取自示例：`layout=split, seed=3, visitors=0.6`，封面冠饰默认 `ornaments={sun_crest=6, cul_de_lampe=3}`，目录默认 `layout=surround`。所有参数都可在 Front Matter 中逐项覆盖：
+**按需居中**：默认 `layout=split` + `twoside` + `inner/outer` 不对称边距，保持 tikzflora 原样的左右页区分；当 `flora-layout` 为居中类布局（`centered` / `surround` / `title`）时，模板自动改用对称边距 `left=right=4.6cm`，文字块在每一页都固定在页面正中，花草左右对称生长，奇偶页位置完全一致（这修复了早期「开启 centered 后文字仍一页左一页右」的问题）。若同时写了 `geometry:`，以用户显式值为最高优先级，不再自动切换。
+
+默认参数取自示例：`layout=split, seed=3, visitors=0.6`，封面冠饰默认 `ornaments={sun_crest=6, cul_de_lampe=3}`，目录默认 `layout=surround`。header 标记、cartouche 星图框、pendant 页脚角饰、gilt 金饰等装饰件沿用 tikzflora 默认权重（全部启用），可用 `flora-ornaments` 加权；花草装饰边框由 layout 自动绘制，不额外添加矩形框线。所有参数都可在 Front Matter 中逐项覆盖：
 
 ```yaml
 ---
 style: tikzflora
 title: "花草样式"
+subtitle: "水彩花草页边装饰"
+author: [作者]
+date: "2026-11-05"
 titlepage: true
 toc: true
 toc-own-page: true
 
-flora-layout: split          # left / right / centered / split / title / surround
+flora-layout: centered        # left / right / centered / split / title / surround
+                              # centered / surround / title 会自动启用对称居中边距
+flora-header: "Florilegium"   # 外侧页眉文字，省略时取 title
 flora-seed: 3                # 数值或 random（random 会使多轮编译结果不稳定，不推荐）
 flora-density: 0.8           # 0~10，疏密
 flora-visitors: 0.6          # 0~10，蜜蜂/蝴蝶/鸟/蜗牛权重
@@ -289,11 +297,15 @@ flora-toc-layout: surround   # 目录页编排（仅该页生效）
 
 要点：
 
-- 带花括号的键（`flora-mix` / `flora-palette` / `flora-ornaments` / `flora-giltlook`）写成纯字符串 `k=v, k=v`，由 `resources/flora.lua` 包裹成 `key={...}`；值中**不要**自己写花括号、引号、换行或 LaTeX 命令，非法字符会直接报错并指出键名。
-- 参数映射由 `flora.lua` 以原始 LaTeX 注入 preamble，位于模板默认值之后，因此用户值覆盖默认值（tikzflora 的 `\florasetup` 按键合并）。
-- 封面 / 目录的 `flora-title-*` / `flora-toc-*` 通过 `\florathispage` 只对**下一次输出的那一页**生效，优先级高于全局 `flora-*`；目录若跨页，仅首页有花环。
+- 带花括号的键（`flora-mix` / `flora-palette` / `flora-ornaments` / `flora-giltlook`）写成纯字符串 `k=v, k=v`，由 `resources/flora.lua` 包裹成 `key={...}`；值中**不要**自己写花括号、引号、换行或 LaTeX 命令，非法字符会直接报错并指出键名。`flora-header` 同样接受纯文本。
+- 参数映射由 `flora.lua` 以原始 LaTeX 注入 preamble，位于模板默认值之后，因此用户值覆盖默认值（tikzflora 的 `\florasetup` 按键合并）。`flora-setup` 中的 `layout=` 优先级高于 `flora-layout`。
+- 封面 / 目录的 `flora-title-*` / `flora-toc-*` 通过 `\florathispage` 只对**下一次输出的那一页**生效，优先级高于全局 `flora-*`；它们不参与全局边距判定，目录若跨页，仅首页有花环。
 - `flora-*` 仅对 `tikzflora` 生效，eisvogel 文档中的同名字段会被忽略。
+- 该样式不使用 eisvogel 的标题页排版，因此以下字段在 tikzflora 下**不生效**：`titlepage-rule-color`、`titlepage-rule-height`、`titlepage-text-color`、`titlepage-background`、`titlepage-color`、`titlepage-logo`、`header-left` / `header-right` / `header-center`、`footer-left` / `footer-right` / `footer-center`。正文页背景 `page-background` 仍可用。
 - 键名与取值范围以上游 [tikz-flora 指南](https://flora.alpacasoft.dev) 为准；项目内附带的运行时位于 `resources/vendor/tikzflora/`。
+
+> [!WARNING]
+> `centered` 等居中布局每页绘制两株花草，PGF 对象数约为单侧布局的两倍，叠加 Pandoc 为目录/交叉引用的多轮 LuaLaTeX 编译，耗时与 PDF 体积会明显上升。长文档建议 `flora-gilt: vector`、降低 `flora-giltdpi`、调低 `flora-density` / `flora-visitors`，或显式改用 `flora-layout: left` / `right`。
 
 ### github风格提示框
 

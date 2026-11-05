@@ -251,26 +251,34 @@ toc-own-page: true        # TOC on its own page
 
 #### `style: tikzflora`
 
-This style uses the standalone template `resources/styles/tikzflora.latex`. It keeps every existing feature (Chinese font adaptation, admonitions, code highlighting, cover page, TOC, colored links, …) and reproduces the page-by-page staging of the upstream `example.tex`:
+This style uses the standalone template `resources/styles/tikzflora.latex`. It keeps every existing feature (Chinese font adaptation, admonitions, code highlighting, cover page, TOC, colored links, …) and follows the page styling of the upstream `example.tex`:
 
 | Page | Effect |
 | --- | --- |
-| Cover | `layout=title`: the title block (`floratitle`) gets a crest, flourish, tailpiece and corner pieces, with a centred, narrower text block |
-| Contents | `layout=surround`: a wreath around the text block |
-| Body | `layout=split`: flora grows in the outer margin, right on odd pages and left on even pages |
+| Cover | Centred large title and subtitle, `floratitle` crest / flourish / tailpiece / corner pieces, and a small quotation-like block below showing author and date |
+| Contents | `layout=surround`: a wreath around the text block; no running head when the TOC owns its page |
+| Body | Default `layout=split`: flora grows in the outer margin, right on odd pages and left on even pages (tikzflora's original two-sided look) |
+| Header / footer | Outer-side (even-page left, odd-page right) small-caps text and page number, **no rules**; the cover and a standalone TOC have no header or footer |
 | Whitespace | tikzflora's shipout hook measures the shipped page, so flora grows into gaps such as `\vspace` |
 
-Defaults follow the upstream example: `layout=split, seed=3, visitors=0.6`, cover ornaments `sun_crest=6, cul_de_lampe=3`, contents `layout=surround`. Every parameter can be overridden in Front Matter:
+**Centring on demand**: by default the document stays two-sided with asymmetric `inner/outer` margins and `layout=split`, exactly as in tikzflora. When `flora-layout` is a centring layout (`centered` / `surround` / `title`), the template automatically switches to symmetric margins (`left=right=4.6cm`): the text block sits in the same centred position on every page and flora grows symmetrically on both sides. This fixes the earlier issue where `centered` still left the text alternating left and right. An explicit `geometry:` in Front Matter has the highest priority and disables the automatic switch.
+
+Defaults follow the upstream example: `layout=split, seed=3, visitors=0.6`, cover ornaments `sun_crest=6, cul_de_lampe=3`, contents `layout=surround`. Header marks, cartouche panels, foot pendants and gilt are all enabled at tikzflora's default weights and can be tuned with `flora-ornaments`; the decorative border is drawn by the layout itself, with no extra rectangular frame. Every parameter can be overridden in Front Matter:
 
 ```yaml
 ---
 style: tikzflora
 title: "Flora"
+subtitle: "Watercolour botanical margins"
+author: [Author]
+date: "2026-11-05"
 titlepage: true
 toc: true
 toc-own-page: true
 
-flora-layout: split          # left / right / centered / split / title / surround
+flora-layout: centered        # left / right / centered / split / title / surround
+                              # centered / surround / title also enable symmetric margins
+flora-header: "Florilegium"   # outer running-head text; defaults to title
 flora-seed: 3                # number or random (random makes multi-pass output unstable, not recommended)
 flora-density: 0.8           # 0-10, how full the border grows
 flora-visitors: 0.6          # 0-10, weight of bees / butterflies / birds / snails
@@ -292,11 +300,15 @@ flora-toc-layout: surround   # contents-page staging (that page only)
 
 Notes:
 
-- Map-like keys (`flora-mix`, `flora-palette`, `flora-ornaments`, `flora-giltlook`) are plain `k=v, k=v` strings; `resources/flora.lua` wraps them as `key={...}`. Do **not** include braces, quotes, newlines or LaTeX commands — invalid values fail the build with the offending key name.
-- The mapping is injected as raw LaTeX into the preamble *after* the template defaults, so user values win (tikzflora merges keys on each `\florasetup` call).
-- `flora-title-*` / `flora-toc-*` use `\florathispage`, which affects only the **next shipped page** and takes precedence over the global `flora-*` values. If the TOC spans several pages, only its first page gets the wreath.
+- Map-like keys (`flora-mix`, `flora-palette`, `flora-ornaments`, `flora-giltlook`) are plain `k=v, k=v` strings; `resources/flora.lua` wraps them as `key={...}`. Do **not** include braces, quotes, newlines or LaTeX commands — invalid values fail the build with the offending key name. `flora-header` takes plain text too.
+- The mapping is injected as raw LaTeX into the preamble *after* the template defaults, so user values win (tikzflora merges keys on each `\florasetup` call). A `layout=` inside `flora-setup` takes precedence over `flora-layout`.
+- `flora-title-*` / `flora-toc-*` use `\florathispage`, which affects only the **next shipped page** and takes precedence over the global `flora-*` values. They do not affect the global margin decision. If the TOC spans several pages, only its first page gets the wreath.
 - `flora-*` keys apply only to `tikzflora`; they are ignored in eisvogel documents.
+- This style does not use eisvogel's title-page layout, so the following keys have **no effect** under tikzflora: `titlepage-rule-color`, `titlepage-rule-height`, `titlepage-text-color`, `titlepage-background`, `titlepage-color`, `titlepage-logo`, `header-left` / `header-right` / `header-center`, and `footer-left` / `footer-right` / `footer-center`. The body-page `page-background` key still works.
 - See the upstream [tikz-flora guide](https://flora.alpacasoft.dev) for all key names and value ranges; the bundled runtime lives in `resources/vendor/tikzflora/`.
+
+> [!WARNING]
+> Centring layouts such as `centered` draw two plants per page — roughly twice the PGF objects of a single-sided layout — and Pandoc reruns LuaLaTeX several times for the TOC and cross-references, so build time and PDF size grow noticeably. For long documents prefer `flora-gilt: vector`, a lower `flora-giltdpi`, smaller `flora-density` / `flora-visitors`, or an explicit `flora-layout: left` / `right`.
 
 ### GitHub-style admonitions
 

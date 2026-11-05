@@ -7,11 +7,15 @@ subject: "Markdown"
 keywords: [关键词, tikzflora]
 subtitle: "水彩花草页边装饰"
 titlepage: true
-titlepage-rule-color: "00727c"
 colorlinks: true
 block-headings: true
 toc: true
 toc-own-page: true
+
+# tikzflora 页面样式：默认 layout=split（区分左右页，tikzflora 原样）
+# 改为 centered 会自动切换为对称边距，文字块在每页居中，花草左右对称生长
+# flora-layout: centered
+# flora-header: "Florilegium"   # 外侧页眉文字，默认取 title
 
 # tikzflora 绘制参数（可逐项覆盖默认值）
 flora-seed: 3
@@ -22,11 +26,15 @@ flora-ornaments: "sun_crest=6, cul_de_lampe=3"
 # 矢量金饰明显快于光栅金饰；想完全复刻示例的华丽效果可改为 raster
 flora-gilt: vector
 # flora-giltdpi: 150          # 仅 gilt=raster 时生效，长文档建议调低
+flora-layout: centered
+flora-title-layout: bouquet
 ---
 
 > [!NOTE]
-> 本文件使用 `style: tikzflora`。封面页有冠饰与尾饰，目录页有环绕花环，
-> 正文页花草沿外侧页边逐页生长，页面留白处也会自动填充。
+> 本文件使用 `style: tikzflora`，页面样式参考 tikzflora 自带示例：封面为居中
+> 大标题与花草冠饰、目录页有环绕花环、页眉为外侧小型大写文字、页脚外侧为页码，
+> 均无分隔横线。默认 `layout=split` 时区分左右页；写 `flora-layout: centered`
+> 会让文字块在每页居中、花草左右对称生长。页面留白处花草也会自动填充。
 
 ## 二级标题
 
@@ -50,6 +58,8 @@ flora-gilt: vector
 
 > [!TIP]
 > 提示框由 `alerts.lua` 渲染，两种样式共用。
+
+五种提示块在 tikzflora 下同样可用：
 
 > [!WARNING]
 > 警告

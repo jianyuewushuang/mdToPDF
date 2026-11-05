@@ -54,4 +54,4 @@ style: tikzflora
 | 样式 | 模板 | 说明 |
 | --- | --- | --- |
 | `eisvogel` | `resources/eisvogel.latex` | 默认样式，未写 `style` 时使用。 |
-| `tikzflora` | `resources/styles/tikzflora.latex` | 独立模板，水彩花草页边装饰；第三方运行时位于 `resources/vendor/tikzflora/`。 |
+| `tikzflora` | `resources/styles/tikzflora.latex` | 独立模板，页面样式参考 `example.tex`，水彩花草页边装饰；第三方运行时位于 `resources/vendor/tikzflora/`。默认 `layout=split` + 不对称边距（区分左右页），`flora-layout` 为 `centered` / `surround` / `title` 时 `resources/flora.lua` 会输出 `flora-centered` 变量，模板据此自动切换对称边距使文字块居中。 |

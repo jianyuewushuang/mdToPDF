@@ -84,7 +84,11 @@ $endif$
 $for(classoption)$
   $classoption$$sep$,
 $endfor$
-$-- TIKZFLORA ADAPTATIONS: layout=split needs a two-sided document.
+$-- TIKZFLORA ADAPTATIONS: keep the two-sided document of example.tex. With
+$-- the default layout=split, flora grows in the outer margin (right on odd
+$-- pages, left on even ones) and the inner/outer margins below alternate too.
+$-- Centred layouts switch to symmetric margins instead (see geometry below),
+$-- so the text block then sits in the same place on every page.
   ,twoside,captions=tableheading
 ]{$if(book)$scrbook$else$scrartcl$endif$}
 $if(beamerarticle)$
@@ -102,22 +106,32 @@ $endif$
 $if(geometry)$
 \usepackage[$for(geometry)$$geometry$$sep$,$endfor$]{geometry}
 $else$
+$-- TIKZFLORA ADAPTATIONS: an explicit geometry: in Front Matter wins. Otherwise
+$-- centred layouts (centered / surround / title) get symmetric margins so the
+$-- text block stays in the same place on odd and even pages, matching the
+$-- centred page of example.tex. The default split keeps the original asymmetric
+$-- inner/outer margins. flora.lua sets flora-centered from flora-layout.
+$if(flora-centered)$
+\usepackage[a4paper,left=4.6cm,right=4.6cm,top=4.2cm,bottom=3.5cm,headheight=14pt,headsep=18pt]{geometry}
+$else$
 \usepackage[a4paper,inner=2cm,outer=5.6cm,top=4.2cm,bottom=3.5cm,headheight=14pt,headsep=18pt]{geometry}
+$endif$
 $endif$
 % TIKZFLORA ADAPTATIONS: load the vendored package and set document-wide
 % defaults. Front Matter flora-* overrides are injected by resources/flora.lua
 % through header-includes (further down this preamble), so they win over these
-% defaults: tikzflora merges keys on every \florasetup call.
+% defaults: tikzflora merges keys on every \florasetup call. split is the
+% upstream default and is kept as-is; choosing a centred layout changes both
+% \florasetup (via flora.lua) and the page geometry (via flora-centered).
 \usepackage{tikzflora}
 \florasetup{layout=split, seed=3, visitors=0.6}
 \usepackage{amsmath,amssymb}
 $if(cancel)$
 \usepackage{cancel}
 $endif$
-$if(titlepage-logo)$
-\usepackage[export]{adjustbox}
-\usepackage{graphicx}
-$endif$
+$-- TIKZFLORA ADAPTATIONS: the eisvogel title-page logo / background / colour
+$-- options are not part of this style; graphicx is loaded unconditionally
+$-- below, so the conditional adjustbox/graphicx block is dropped.
 
 % add backlinks to footnote references, cf. https://tex.stackexchange.com/questions/302266/make-footnote-clickable-both-ways
 $if(footnotes-disable-backlinks)$
@@ -653,18 +667,11 @@ $if(page-background)$
 \usepackage[pages=all]{background}
 $endif$
 
-%
-% for the background color of the title page
-%
-$if(titlepage)$
-\usepackage{pagecolor}
-\usepackage{afterpage}
-$if(titlepage-background)$
-\usepackage{tikz}
-$endif$
-$endif$
-$-- TIKZFLORA ADAPTATIONS: dropped the upstream second geometry load here
-$-- (it would clash with the wide-margin options set near the top).
+$-- TIKZFLORA ADAPTATIONS: dropped the eisvogel title-page colour/background
+$-- helpers (pagecolor, afterpage, conditional tikz). The rewritten title page
+$-- follows example.tex and needs none of them; tikzflora.sty already loads tikz.
+$-- The upstream second geometry load is also dropped (it would clash with the
+$-- margin options set near the top).
 
 %
 % break urls
@@ -903,19 +910,20 @@ $endif$
 %
 $if(disable-header-and-footer)$
 $else$
-\usepackage[headsepline,footsepline]{scrlayer-scrpage}
+% TIKZFLORA ADAPTATIONS: mirror example.tex's running head. In a two-sided
+% document \ohead/\ofoot are the outer side (even-page left, odd-page right),
+% exactly like fancyhdr's [LE,RO]. No head/foot rules, no eisvogel title/date/
+% author clutter; flora.lua supplies flora-header, defaulting to the title.
+% \textsc is harmless for CJK (it simply selects the upright shape).
+\usepackage{scrlayer-scrpage}
 
-\newpairofpagestyles{eisvogel-header-footer}{
+\newpairofpagestyles{flora-header-footer}{
   \clearpairofpagestyles
-  \ihead*{$if(header-left)$$header-left$$else$$title$$endif$}
-  \chead*{$if(header-center)$$header-center$$else$$endif$}
-  \ohead*{$if(header-right)$$header-right$$else$$date$$endif$}
-  \ifoot*{$if(footer-left)$$footer-left$$else$$for(author)$$author$$sep$, $endfor$$endif$}
-  \cfoot*{$if(footer-center)$$footer-center$$else$$endif$}
-  \ofoot*{$if(footer-right)$$footer-right$$else$\thepage$endif$}
+  \ohead*{\small\textsc{$if(flora-header)$$flora-header$$else$$title$$endif$}}
+  \ofoot*{\small\thepage}
   \addtokomafont{pageheadfoot}{\upshape}
 }
-\pagestyle{eisvogel-header-footer}
+\pagestyle{flora-header-footer}
 
 $if(book)$
 \deftripstyle{ChapterStyle}{}{}{}{}{\pagemark}{}
@@ -958,73 +966,45 @@ $endif$
 \begin{document}
 
 $if(titlepage)$
-\begin{titlepage}
-$-- TIKZFLORA ADAPTATIONS: crown the cover with layout=title (example.tex);
-$-- a centred text block leaves room for the crest, flourish and tailpiece.
+% TIKZFLORA ADAPTATIONS: the cover is a literal copy of example.tex (L43-61),
+% including the plain \newgeometry + \clearpage structure instead of a KOMA
+% titlepage environment. layout=title measures the floratitle marks to place
+% the two crowns; the titlepage environment's vertical alignment puts that
+% block outside the frame and makes tikzflora's frames.lua assert.
+% No colour rule, grey text, flushleft or background. All four Front Matter
+% fields are conditional, so a missing field still compiles. \scshape is
+% omitted: it has no effect on CJK glyphs and triggers fontspec warnings.
+\newgeometry{left=3.2cm,right=3.2cm,top=5cm,bottom=4cm}
 \thispagestyle{empty}
 \floraTitlePageSetup
-\newgeometry{left=3.2cm,right=3.2cm,top=5cm,bottom=4cm}
-$if(titlepage-color)$
-\definecolor{titlepage-color}{HTML}{$titlepage-color$}
-\newpagecolor{titlepage-color}\afterpage{\restorepagecolor}
+\begin{floratitle}
+\centering
+% TIKZFLORA ADAPTATIONS: layout=title builds two mirrored frames from the
+% ink boxes measured between these marks. A short centred CJK title is too
+% narrow for those frames (frames.lua asserts "text block lies outside its
+% frame"); example.tex gets away with it because its long Latin subtitle is
+% wide. This zero-height full-width rule is invisible but makes the measured
+% title block span the whole text area, so any title length works.
+\noindent\textcolor{white}{\rule{\textwidth}{0.0001pt}}\par
+{\Huge $title$\par}
+$if(subtitle)$
+\vspace{1.2em}
+{\large $subtitle$\par}
 $endif$
-$if(titlepage-background)$
-\tikz[remember picture,overlay] \node[inner sep=0pt] at (current page.center){\includegraphics[width=\paperwidth,height=\paperheight]{$titlepage-background$}};
+\end{floratitle}
+\vspace{6cm}
+\begin{center}
+\begin{minipage}{0.66\textwidth}
+\small\itshape
+$if(author)$
+$for(author)$$author$$sep$, $endfor$\par
 $endif$
-\newcommand{\colorRule}[3][black]{\textcolor[HTML]{#1}{\rule{#2}{#3}}}
-\begin{flushleft}
-\noindent
-\\[-1em]
-\color[HTML]{$if(titlepage-text-color)$$titlepage-text-color$$else$5F5F5F$endif$}
-\makebox[0pt][l]{\colorRule[$if(titlepage-rule-color)$$titlepage-rule-color$$else$435488$endif$]{1.3\textwidth}{$if(titlepage-rule-height)$$titlepage-rule-height$$else$4$endif$pt}}
-\par
-\noindent
-
-$if(titlepage-background)$
-% The titlepage with a background image has other text spacing and text size
-{
-  \setstretch{2}
-  \vfill
-  \vskip -8em
-  \begin{floratitle}
-  \noindent {\huge \textbf{\textsf{$title$}}\par}
-  $if(subtitle)$
-  \vskip 1em
-  {\Large \textsf{$subtitle$}\par}
-  $endif$
-  \end{floratitle}
-  \vskip 2em
-  \noindent {\Large \textsf{$for(author)$$author$$sep$, $endfor$} \vskip 0.6em \textsf{$date$}}
-  \vfill
-}
-$else$
-{
-  \setstretch{1.4}
-  \vfill
-  \begin{floratitle}
-  \noindent {\huge \textbf{\textsf{$title$}}\par}
-  $if(subtitle)$
-  \vskip 1em
-  {\Large \textsf{$subtitle$}\par}
-  $endif$
-  \end{floratitle}
-  \vskip 2em
-  \noindent {\Large \textsf{$for(author)$$author$$sep$, $endfor$}}
-  \vfill
-}
+$if(date)$
+\smallskip\upshape\hfill $date$\par
 $endif$
-
-$if(titlepage-logo)$
-\noindent
-\includegraphics[width=$if(logo-width)$$logo-width$$else$35mm$endif$, left]{$titlepage-logo$}
-$endif$
-
-$if(titlepage-background)$
-$else$
-\textsf{$date$}
-$endif$
-\end{flushleft}
-\end{titlepage}
+\end{minipage}
+\end{center}
+\clearpage
 \restoregeometry
 \pagenumbering{arabic}
 $endif$
@@ -1057,6 +1037,12 @@ $if(toc-title)$
 $endif$
 % TIKZFLORA ADAPTATIONS: a wreath (layout=surround) needs room on all four
 % sides, so give the contents page a centred text block like example.tex.
+% example.tex (L65) drops the running head on the contents page; only do that
+% when the TOC owns the page, otherwise body text shares it and should keep
+% its header and page number.
+$if(toc-own-page)$
+\thispagestyle{empty}
+$endif$
 \floraTocPageSetup
 \newgeometry{left=3.2cm,right=3.2cm,top=4cm,bottom=4cm}
 {
